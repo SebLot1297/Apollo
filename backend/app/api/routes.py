@@ -1,6 +1,7 @@
 import asyncio
 from uuid import UUID
 
+import anyio
 from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
@@ -222,6 +223,7 @@ async def stream(socket: WebSocket, run_id: UUID):
                 if message["type"] == "websocket.disconnect":
                     break
                 receive = asyncio.create_task(socket.receive())
+                tasks = [receive, update]
             if update in done:
                 await asyncio.wait_for(socket.send_json(update.result()), timeout=5)
                 update = asyncio.create_task(queue.get())
@@ -233,7 +235,10 @@ async def stream(socket: WebSocket, run_id: UUID):
     finally:
         for task in tasks:
             task.cancel()
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
         if queue is not None:
             socket.app.state.hub.unsubscribe(str(run_id), queue)
+        # A disconnect can cancel this scope while child tasks are being drained.
+        # Shield that cleanup so cancellation cannot leak tasks or subscriptions.
+        if tasks:
+            with anyio.CancelScope(shield=True):
+                await asyncio.gather(*tasks, return_exceptions=True)

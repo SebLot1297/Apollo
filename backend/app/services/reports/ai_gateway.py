@@ -3,10 +3,11 @@ from collections import deque
 from time import monotonic
 from typing import Literal
 
-from app.core.errors import MissingError, UnavailableError
-from app.schemas.mission import MissionConfiguration, MissionObjective
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
+
+from app.core.errors import MissingError, UnavailableError
+from app.schemas.mission import MissionConfiguration, MissionObjective
 
 
 class Envelope(BaseModel):
@@ -71,13 +72,12 @@ class AIGateway:
                 raise UnavailableError("AI is disabled")
             if self.service is None:
                 raise UnavailableError("Part D AI service is not installed yet")
-            async with self.semaphore:
-                result = await asyncio.wait_for(
-                    self.service.execute(
+            # Admission wait belongs to the same deadline as inference.
+            async with asyncio.timeout(self.config.ai_timeout_seconds):
+                async with self.semaphore:
+                    result = await self.service.execute(
                         task, prompt, context=context, provider=provider, demo_mode=preferences["demo_mode"]
-                    ),
-                    timeout=self.config.ai_timeout_seconds,
-                )
+                    )
             envelope = Envelope.model_validate(result).model_dump()
             if envelope["mock"] != (envelope["provider"] == "mock"):
                 raise ValueError("Invalid provider provenance")
@@ -102,6 +102,7 @@ class AIGateway:
                 for k, v in envelope["usage"].items()
                 if k in {"input_tokens", "output_tokens", "total_tokens"} and type(v) is int and v >= 0
             }
+            envelope["latency_ms"] = (monotonic() - started) * 1000
             await asyncio.to_thread(self.store.audit_ai, task, envelope)
             if task == "generate_report":
                 await asyncio.to_thread(self.store.save_analysis, str(body.run_id), envelope)

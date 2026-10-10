@@ -1,0 +1,72 @@
+name: commandgrid-inference
+services:
+  vllm:
+    # Versioned release; qualify this exact model revision + image + GPU before use.
+    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.28.0-cu129}
+    restart: unless-stopped
+    gpus: all
+    shm_size: 4gb
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      VLLM_API_KEY: ${VLLM_API_KEY:?Set a nonempty VLLM_API_KEY in the private .env file}
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_HOME: /cache/huggingface
+      VLLM_CACHE_ROOT: /cache/vllm
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      DO_NOT_TRACK: "1"
+    command:
+      - --model
+      - ${VLLM_MODEL:-Qwen/Qwen3.8-27B}
+      - --revision
+      - ${VLLM_MODEL_REVISION:-1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0}
+      - --tokenizer-revision
+      - ${VLLM_MODEL_REVISION:-1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0}
+      - --served-model-name
+      - ${VLLM_MODEL:-Qwen/Qwen3.8-27B}
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --dtype
+      - bfloat16
+      - --max-model-len
+      - ${VLLM_MAX_MODEL_LEN:-8192}
+      - --max-num-seqs
+      - ${VLLM_MAX_NUM_SEQS:-2}
+      - --gpu-memory-utilization
+      - ${VLLM_GPU_MEMORY_UTILIZATION:-0.85}
+      - --tensor-parallel-size
+      - ${VLLM_TENSOR_PARALLEL_SIZE:-1}
+      - --language-model-only
+      - --default-chat-template-kwargs
+      - '{"enable_thinking":false}'
+      - --no-enable-log-requests
+      - --no-enable-log-outputs
+      - --disable-uvicorn-access-log
+    ports:
+      # Do not change this to 0.0.0.0; API keys do not cover ancillary routes.
+      - "127.0.0.1:${VLLM_HOST_PORT:-8001}:8000"
+    volumes:
+      - huggingface-cache:/cache/huggingface
+      - vllm-cache:/cache/vllm
+      - ./smoke.py:/opt/commandgrid/smoke.py:ro
+    healthcheck:
+      # Metadata only, including negative authentication check; never generates.
+      test: ["CMD", "python3", "/opt/commandgrid/smoke.py", "--base-url", "http://127.0.0.1:8000/v1", "--model", "${VLLM_MODEL:-Qwen/Qwen3.8-27B}", "--timeout", "5"]
+      interval: 30s
+      timeout: 12s
+      retries: 5
+      start_period: 20m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks: [inference]
+networks:
+  inference:
+    driver: bridge
+volumes:
+  huggingface-cache:
+  vllm-cache:

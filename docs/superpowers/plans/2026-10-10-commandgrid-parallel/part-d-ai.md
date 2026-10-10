@@ -1,5 +1,7 @@
 # Part D — AI Providers and Vultr Inference Implementation Plan
 
+The expanded standalone assignment is [Part D complete plan](../2026-10-10-commandgrid-part-d-complete.md). It covers the integrated A/B contracts, detailed implementation tasks, verification and deployment qualification.
+
 > **For agentic workers:** Use the executing-plans skill to work through the checkboxes. This assignment is one workstream in the CommandGrid parallel plan. Request coordinator review when changing a shared interface.
 
 **Goal:** Provide validated optional AI features and deployable secured inference configuration without blocking the core simulator.
