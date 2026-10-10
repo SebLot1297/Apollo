@@ -128,6 +128,14 @@ Backend preference and run changes commit together before broadcasting. Elapsed 
 
 After integrating the newer demo/recovery features, validation passed: production build, frontend lint, backend lint, **160 backend tests** plus 194 subtests (two optional database checks skipped), **63 Chromium browser tests** in 2.7 minutes, and **three real mock-AI browser tests** in 14.0 seconds. Browser and persistence checks used disposable SQLite databases; existing local mission data was preserved.
 
+## Manual and automatic recovery
+
+**Mission Control → Command console → Recovery commands → Automatic recovery** toggles the selected created/running/paused run. Manual is the default. Automatic schedules real repairs 10 simulated seconds after damage is detected, records their source/time/effects, and spends actual resources. Outstanding timers freeze while paused and are cancelled when switching to Manual. Mode changes are server-confirmed and persist across reloads/restarts; resets retain the mode. Recovery controls and guidance execute buttons are disabled while Automatic is active. Guided demos can run unattended in Automatic and retain incident pauses in Manual.
+
+The backend uses a pure, deterministic recovery policy integrated with incident boundaries, preserving objective/deadline evaluation and speed-independent outcomes. Insufficient resources or unsupported capabilities are recorded; Automatic can still fail. Reports label automatic command evidence. `../backend/tests/test_automatic_recovery.py` exercises timings, mode transitions, failure limits, speed/tick invariance, storage and guided runs; `../e2e/automatic-recovery.spec.ts` checks real unattended reports, manual switching, pause/cancellation, failures, reset and mobile behavior. Existing saved missions/reports are preserved and older snapshots default to Manual.
+
+Validation passed: **183 backend tests** and 194 subtests (two optional database checks skipped), **68 Chromium tests** in 3.9 minutes, **three real mock-AI browser checks** in 17.4 seconds, production build, frontend/backend lint and formatting. The 23 new backend checks include matching automatic outcomes at 1×, 5×, 30×, 120× and 3600×. All persistence/browser checks used isolated SQLite storage.
+
 ## Milestones and integration
 
 - [x] C1 typed transport, gated shared cache and connected application shell.

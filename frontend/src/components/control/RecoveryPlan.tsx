@@ -18,13 +18,18 @@ const key = (runId: string) => ['recovery-plan', runId] as const
 export default function RecoveryPlan({ state }: { state: MissionState }) {
   const client = useQueryClient()
   const pending = useWorkspace((store) => store.pending[state.run_id] ?? false)
-  const live = useWorkspace((store) => store.connections[state.run_id] === 'live')
+  const live = useWorkspace(
+    (store) => store.connections[state.run_id] === 'live',
+  )
   const [error, setError] = useState<unknown>(null)
   const [notice, setNotice] = useState('')
   const terminal = isTerminal(state.status)
+  const automatic = state.recovery_mode === 'automatic'
   // Refresh after incidents, pause/resume, and confirmed actions; poll while running.
-  const unresolved = state.incidents.filter((i) => i.status !== 'resolved').length
-  const revision = `${state.status}:${unresolved}`
+  const unresolved = state.incidents.filter(
+    (i) => i.status !== 'resolved',
+  ).length
+  const revision = `${state.status}:${unresolved}:${state.recovery_mode ?? 'manual'}`
   useEffect(() => {
     void client.invalidateQueries({ queryKey: key(state.run_id) })
   }, [client, state.run_id, revision])
@@ -60,7 +65,10 @@ export default function RecoveryPlan({ state }: { state: MissionState }) {
             Guidance is read-only while disconnected; actions stay disabled.
           </p>
         )}
-        <ErrorNotice error={error ?? plan.error} retry={() => void plan.refetch()} />
+        <ErrorNotice
+          error={error ?? plan.error}
+          retry={() => void plan.refetch()}
+        />
         {notice && (
           <p className="cg-notice success" role="status">
             {notice}
@@ -76,9 +84,9 @@ export default function RecoveryPlan({ state }: { state: MissionState }) {
         ) : (
           <>
             <p className="cg-help">
-              Recommended in priority order. Effects and costs are previewed by
-              the engine on a copied snapshot; nothing is applied until you
-              execute a step.
+              {automatic
+                ? 'Automatic recovery is enabled. The simulation schedules its own repairs using available resources. Switch to Manual in the Command console to execute actions yourself.'
+                : 'Recommended in priority order. Effects and costs are previewed by the engine on a copied snapshot; nothing is applied until you execute a step.'}
             </p>
             {steps.length ? (
               <ul className="cg-list">
@@ -111,10 +119,14 @@ export default function RecoveryPlan({ state }: { state: MissionState }) {
                     ) : (
                       <button
                         className="button"
-                        disabled={blocked}
+                        disabled={blocked || automatic}
                         onClick={() =>
                           void run(
-                            newAction(state.run_id, step.command_type, step.payload),
+                            newAction(
+                              state.run_id,
+                              step.command_type,
+                              step.payload,
+                            ),
                             step.title,
                           )
                         }
@@ -126,7 +138,9 @@ export default function RecoveryPlan({ state }: { state: MissionState }) {
                 ))}
               </ul>
             ) : (
-              <p className="cg-empty">No recovery actions are required right now.</p>
+              <p className="cg-empty">
+                No recovery actions are required right now.
+              </p>
             )}
             {outlook && (
               <div className="cg-stack">

@@ -17,6 +17,8 @@ Presenter checklist:
 
 Ignoring recovery produces degraded systems, unresolved incidents, and an unsuccessful report — outcomes always come from real commands, resources, and objective evaluation.
 
+**Automatic option:** In the Command console, enable **Automatic recovery** before starting (or while running/paused). The demo then runs without incident auto-pauses and issues real recovery commands using available resources after the simulated response delay. Turning it off restores Manual and cancels pending attempts. An explicit Pause still stops the clock in either mode.
+
 The recovery plan is read-only: generating it previews commands on copied engine snapshots and never writes to the run. Without Gemini configured, guidance and all recovery controls still work; the AI button reports the deterministic fallback.
 
 ## Current verified Part A demo

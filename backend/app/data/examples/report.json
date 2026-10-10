@@ -113,6 +113,7 @@
   },
   "success": true,
   "status": "completed",
+  "recovery_mode": "manual",
   "elapsed_time_seconds": 120.0,
   "final_metrics": {
     "communication_uptime_percent": 100.0,
@@ -195,7 +196,8 @@
       "elapsed_time_seconds": 0.0,
       "details": {
         "command_type": "start",
-        "payload": {}
+        "payload": {},
+        "source": "manual"
       }
     },
     {
@@ -217,7 +219,8 @@
       "elapsed_time_seconds": 0.0,
       "details": {
         "command_type": "activate_backup_communications",
-        "payload": {}
+        "payload": {},
+        "source": "manual"
       }
     },
     {
@@ -239,7 +242,8 @@
       "elapsed_time_seconds": 0.0,
       "details": {
         "command_type": "activate_backup_power",
-        "payload": {}
+        "payload": {},
+        "source": "manual"
       }
     },
     {
@@ -262,7 +266,8 @@
       "elapsed_time_seconds": 120.0,
       "details": {
         "command_type": "finish",
-        "payload": {}
+        "payload": {},
+        "source": "manual"
       }
     },
     {
@@ -277,6 +282,7 @@
   "command_history": [
     {
       "command_type": "start",
+      "source": "manual",
       "payload": {},
       "elapsed_time_seconds": 0.0,
       "timestamp": "2026-10-10T12:00:00Z",
@@ -284,6 +290,7 @@
     },
     {
       "command_type": "activate_backup_communications",
+      "source": "manual",
       "payload": {},
       "elapsed_time_seconds": 0.0,
       "timestamp": "2026-10-10T12:00:00Z",
@@ -291,6 +298,7 @@
     },
     {
       "command_type": "activate_backup_power",
+      "source": "manual",
       "payload": {},
       "elapsed_time_seconds": 0.0,
       "timestamp": "2026-10-10T12:00:00Z",
@@ -298,6 +306,7 @@
     },
     {
       "command_type": "finish",
+      "source": "manual",
       "payload": {},
       "elapsed_time_seconds": 120.0,
       "timestamp": "2026-10-10T12:02:00Z",

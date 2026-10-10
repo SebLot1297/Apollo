@@ -30,7 +30,8 @@ class EngineAdapter:
         event_sequence = max((event.sequence for event in events), default=0)
         for event in native.events[len(prior.get("events", [])):]:
             event_sequence += 1
-            severity = "action" if event.type == "command" else "warning" if event.type == "incident_started" else "info"
+            severity = ("action" if event.type == "command" else "warning"
+                        if event.type in ("incident_started", "automatic_recovery_blocked") else "info")
             events.append(Event(
                 id=event.id, sequence=event_sequence, simulated_time_seconds=event.elapsed_time_seconds,
                 event_type=event.type, severity=severity, message=event.message, payload=event.details,
@@ -43,6 +44,7 @@ class EngineAdapter:
         return MissionState(
             run_id=native.run_id, mission_id=native.mission_id, mission=native.mission,
             status=native.status, run_profile=profile, elapsed_time_seconds=native.elapsed_time_seconds,
+            recovery_mode=native.recovery_mode, next_recovery_at_seconds=native.next_recovery_at_seconds,
             random_seed=native.random_seed, time_multiplier=native.time_multiplier, sequence=sequence,
             metrics=native.metrics, systems={
                 "communication_health": native.systems["communications"].health,
@@ -64,10 +66,12 @@ class EngineAdapter:
             engine_snapshot=native.model_dump(mode="json"),
         )
 
-    def create_state(self, mission, random_seed=42, run_id=None, time_multiplier=30, run_profile="standard"):
+    def create_state(self, mission, random_seed=42, run_id=None, time_multiplier=30,
+                     run_profile="standard", recovery_mode="manual"):
         return self._public(
             self.engine.create_state(
                 mission, random_seed=random_seed, run_id=run_id, time_multiplier=time_multiplier,
+                recovery_mode=recovery_mode,
             ),
             run_profile=run_profile,
         )

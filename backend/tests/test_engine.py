@@ -448,7 +448,7 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(report["telemetry"], [sample.model_dump(mode="json") for sample in state.history])
         self.assertEqual(report["command_history"], [command.model_dump(mode="json") for command in state.command_history])
         self.assertIsNone(report["ai_analysis"])
-        self.assertEqual(set(report), {"run_id", "mission", "success", "status", "elapsed_time_seconds",
+        self.assertEqual(set(report), {"run_id", "mission", "success", "status", "recovery_mode", "elapsed_time_seconds",
                                       "final_metrics", "objective_results", "events", "command_history",
                                       "telemetry", "summary", "ai_analysis", "created_at"})
         json.dumps(report, allow_nan=False)

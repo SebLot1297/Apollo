@@ -35,6 +35,7 @@ export default function Commands({
     [error, setError] = useState<unknown>(null),
     [notice, setNotice] = useState('')
   const [kind, setKind] = useState<IncidentKind>('power_failure')
+  const automatic = state.recovery_mode === 'automatic'
   const [speedDraft, setSpeedDraft] = useState<{
     runId: string
     value: string
@@ -59,7 +60,9 @@ export default function Commands({
       setNotice(
         action.command_type === 'set_speed'
           ? `Simulation speed updated to ${accepted.time_multiplier}×.`
-          : `${action.command_type.replaceAll('_', ' ')} confirmed by the server. ${accepted.command_history?.at(-1)?.effect ?? ''}`,
+          : action.command_type === 'set_recovery_mode'
+            ? `Recovery mode updated to ${accepted.recovery_mode}.`
+            : `${action.command_type.replaceAll('_', ' ')} confirmed by the server. ${accepted.command_history?.at(-1)?.effect ?? ''}`,
       )
       if (action.command_type === 'reset') {
         useWorkspace.getState().selectRun(accepted.run_id)
@@ -148,6 +151,43 @@ export default function Commands({
             </div>
           </div>
         )}
+        <fieldset
+          className="cg-form"
+          disabled={blocked || isTerminal(state.status)}
+        >
+          <legend>Recovery commands</legend>
+          <label className="cg-check">
+            <input
+              type="checkbox"
+              role="switch"
+              aria-label="Automatic recovery"
+              checked={automatic}
+              onChange={(event) =>
+                void act('set_recovery_mode', {
+                  recovery_mode: event.target.checked ? 'automatic' : 'manual',
+                })
+              }
+            />
+            Automatic recovery
+          </label>
+          <p className="cg-help" role="status">
+            {automatic
+              ? 'Automatic: the simulation repairs damage and resolves incidents using real recovery commands and available resources. Attempts are scheduled 10 simulated seconds after damage is detected. Pausing also pauses recovery.'
+              : 'Manual: choose recovery commands yourself. Incidents and damaged equipment are not repaired automatically.'}
+          </p>
+          {automatic && state.next_recovery_at_seconds != null && (
+            <p className="cg-help">
+              Next automatic recovery attempt: T+
+              {state.next_recovery_at_seconds.toFixed(1)}s.
+            </p>
+          )}
+          {automatic && state.run_profile === 'guided_demo' && (
+            <p className="cg-help">
+              Guided incident pauses are disabled in Automatic mode so the demo
+              can run unattended.
+            </p>
+          )}
+        </fieldset>
         <form
           className="cg-form"
           noValidate
@@ -317,12 +357,17 @@ export default function Commands({
           </div>
         </fieldset>
         <fieldset
-          disabled={blocked || !['running', 'paused'].includes(state.status)}
+          disabled={
+            blocked ||
+            automatic ||
+            !['running', 'paused'].includes(state.status)
+          }
           className="cg-form"
         >
           <legend className="cg-help">
-            Recovery actions work while running or paused; paused changes do not
-            advance simulated time.
+            {automatic
+              ? 'Manual recovery commands are disabled. Switch off Automatic recovery to use these controls.'
+              : 'Recovery actions work while running or paused; paused changes do not advance simulated time.'}
           </legend>
           <div className="cg-actions">
             <button

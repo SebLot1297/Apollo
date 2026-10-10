@@ -15,7 +15,8 @@ class TestEngine:
     __test__ = False
 
     @staticmethod
-    def create_state(mission, random_seed=42, run_id=None, time_multiplier=30, run_profile="standard"):
+    def create_state(mission, random_seed=42, run_id=None, time_multiplier=30,
+                     run_profile="standard", recovery_mode="manual"):
         return MissionState(
             run_id=run_id or uuid4(),
             mission_id=mission.id,
@@ -23,6 +24,7 @@ class TestEngine:
             random_seed=random_seed,
             time_multiplier=time_multiplier,
             run_profile=run_profile,
+            recovery_mode=recovery_mode,
         )
 
     @staticmethod

@@ -151,6 +151,7 @@ export default function AfterActionReport() {
                 {report.command_history.map((command, index) => (
                   <li key={index}>
                     <strong>
+                      {command.source === 'automatic' && 'Automatic · '}
                       {command.command_type.replaceAll('_', ' ')} · T+{' '}
                       {number(
                         command.simulated_time_seconds ??

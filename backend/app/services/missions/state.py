@@ -50,6 +50,8 @@ class MissionState(DomainModel):
     mission_id: UUID
     mission: MissionConfiguration
     status: RunStatus = 'created'
+    recovery_mode: Literal['manual', 'automatic'] = 'manual'
+    next_recovery_at_seconds: Annotated[float, Field(ge=0)] | None = None
     run_profile: Literal['standard', 'guided_demo'] = 'standard'
     elapsed_time_seconds: Annotated[float, Field(ge=0)] = 0
     random_seed: int = 42

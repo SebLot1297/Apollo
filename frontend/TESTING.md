@@ -96,6 +96,19 @@ Resize the browser to about 390 px wide. Open navigation with the menu button. P
 
 Use Tab/Shift+Tab, Enter on map markers, and Escape in a confirmation dialog. Focus should remain visible. A dialog should keep focus inside until closed, then return it to the initiating control. Charts have complete telemetry tables for exact values.
 
+## 7. Check automatic and manual recovery
+
+Create a separate 600-second mission using the conditions above, with **incidents resolved >= 1** and **equipment availability >= 100** both required. Launch it and open **Mission Control → Command console → Recovery commands**.
+
+1. **Automatic recovery** starts off (Manual). Switch it on before starting; wait for the server confirmation, then reload. The switch should stay on.
+2. Set **Run speed (×)** to **30** and start. Leave recovery buttons alone. Equipment is repaired after 10 simulated seconds; scheduled incidents are acknowledged and repaired after the simulated recovery delay. The run should finish successfully with the default seed and sufficient resources. The report labels automatic commands and records their times and effects.
+3. Repeat at a different speed with the same seed. Automatic decisions use simulated time, so the objective outcome and recovery times should agree.
+4. In a separate run, pause with damage outstanding and enable Automatic. No repairs should occur while paused. Switch back to Manual: the pending recovery is cancelled, and manual recovery buttons become available. Resume and wait more than 10 simulated seconds: the cancelled repairs must not execute. Repair the incident manually.
+5. With resource level **0**, Automatic must record blocked attempts and leave unmet objectives failed. It must not manufacture resources or successful outcomes.
+6. A failed toggle save must show an error and keep the confirmed mode. Completed runs keep their saved evidence. Reset creates a new run retaining its recovery mode; other newly launched missions start in Manual.
+
+The guided demo also supports Automatic: incident auto-pauses are disabled in that mode so it runs unattended. Manual guided demos retain their incident pauses. A deliberate Pause still requires Resume in either mode.
+
 ## Repeatable automated checks
 
 Stop development servers on ports 8000/5173 first. The browser configurations start their own backend/Vite servers with disposable SQLite databases.

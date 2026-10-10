@@ -109,6 +109,10 @@ export default function MissionControl() {
               {state.run_profile === 'guided_demo' && (
                 <Badge tone="cyan">Guided demo</Badge>
               )}
+              <span>
+                Recovery:{' '}
+                {state.recovery_mode === 'automatic' ? 'Automatic' : 'Manual'}
+              </span>
               {['running', 'paused'].includes(state.status) && (
                 <span data-testid="remaining-wall-time">
                   ≈{' '}
