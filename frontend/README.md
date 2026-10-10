@@ -14,7 +14,7 @@ Implemented against integrated A/B baseline `c5f52094bae52ad1109a5ee58e6c29085b6
 | `/reports`, `/reports/:runId`                 | Persisted list/detail, authoritative success, full configuration snapshot, metrics, historical objective reasons/achievement times, telemetry table/chart, events, command effects, separate optional AI narrative and two-report comparison. |
 | `/settings`                                   | Persistent provider/demo/future-speed preferences, database mode, backend/engine readiness and configured versus available provider status.                                                                                                   |
 
-Only Communications Recovery is available. All terrain/locations are fictional. The obsolete Aurora preview source and planned-page component have been removed. Forms retain unsaved drafts after errors and confirm dirty navigation. Dialogs trap/restore focus and support Escape. Mobile navigation, visible keyboard focus, reduced motion and chart tables are supported.
+Only Communications Recovery is available. All terrain/locations are fictional. The obsolete Aurora preview source and planned-page component have been removed. Forms retain unsaved drafts after errors and confirm dirty navigation. Confirmed mission saves return to the top of the Dashboard and show the screen-reader-announced **mission saved successfully** popup, dismissible manually or after eight seconds. Failed or invalid saves remain in the editor without success feedback. Dialogs trap/restore focus and support Escape. Mobile navigation, visible keyboard focus, reduced motion and chart tables are supported.
 
 Core journey: create a valid configuration → save/reload → launch → explicitly start → trigger, acknowledge and restore a synthetic incident → pause/resume → finish at current elapsed time → inspect/reload persisted results → compare previous runs → reset to a new stopped run while keeping the old report. Termination, natural duration completion, one-active-run conflicts and historical reports after source edits/deletion are covered.
 
@@ -37,7 +37,7 @@ Mission/objective generation, incident explanation, chat and report narrative ca
 
 AI envelopes display provider, model, mock flag, fallback reason and latency. Mock responses visibly say DEMO/MOCK. Text is rendered as React text, never injected HTML. The assistant cannot execute suggested commands. Numerical evidence and `report.success` remain separate from narrative; narrative generation refetches persisted reports.
 
-**Successful frontend AI tests use labeled transport fixtures. Live Gemini/Qwen inference and frontend-driven backend mock persistence have not been verified by this browser configuration. Part D's backend tests cover its mock service and persistence separately.**
+**The standard browser suite uses labeled transport fixtures for successful AI responses. The separate mock-AI suite now verifies the real backend mock service, proposal saves, explanation/chat numerical isolation and persisted report narratives. Live Gemini/Qwen inference remains unverified.**
 
 ## Verification
 
@@ -48,6 +48,7 @@ npm run build
 npm run lint
 npm test
 npm run test:e2e
+npx playwright test --config e2e/mock-ai.config.ts
 git diff --check
 ```
 
@@ -55,13 +56,25 @@ Final verification on 2026-10-10:
 
 | Command            | Result                                                                                                                                                                               |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run build`    | Passed TypeScript and Vite production build, 2582 modules; Vite build 1.41 seconds. Route splitting keeps all JavaScript chunks below 500 kB (entry 433.24 kB, telemetry 356.95 kB). |
+| `npm run build`    | Passed TypeScript and Vite production build, 2582 modules; Vite build 1.45 seconds. Route splitting keeps all JavaScript chunks below 500 kB (entry 433.24 kB, telemetry 356.95 kB). |
 | `npm run lint`     | Passed with no warnings or errors.                                                                                                                                                   |
 | `npm test`         | 125 passed, 2 PostgreSQL-only skipped, 194 subtests passed in 11.09 seconds.                                                                                                         |
-| `npm run test:e2e` | All 37 Chromium tests passed in 1.5 minutes against isolated backend/Vite servers.                                                                                                   |
+| `npm run test:e2e` | All 39 Chromium tests passed in 1.6 minutes against isolated backend/Vite servers.                                                                                                   |
 | `git diff --check` | Passed, no whitespace errors.                                                                                                                                                        |
 
-Screenshots were visually reviewed for desktop/mobile layout, readable telemetry axes, natural panel sizing and honest unavailable AI. Runtime and console-error checks passed for the desktop/390px real-data journeys. All 64 changed/added/removed files are inside the assigned frontend/test scope. The frontend lint configuration excludes generated `dist/` and Vite dependency caches so lint remains valid after builds/browser runs.
+Objective editor regression: deleting all template objectives and then appending new ones originally crashed because field-array updates preceded watched values. Rows now match watched values by their objective UUID and use the field-array value during the transition. Two real-backend regression tests cover empty-to-new drafts, repeated middle-row replacement, saved objective POST/DELETE, preserved IDs and reload. The focused forms suite passed all seven tests in 22.5 seconds; build/lint and the complete 39-test browser suite passed. Backend source is unchanged; the backend result above is from the prior Part D integration verification.
+
+Fresh application testing: `npm test` passed 125 tests and 194 subtests, with two PostgreSQL-only skips, in 19.51 seconds. `npm run test:e2e` passed all 39 tests in 2.5 minutes. The separate `npx playwright test --config e2e/mock-ai.config.ts` passed all three real mock-AI checks in 28.0 seconds. The application source was unchanged during this additional testing; build/lint results above remain from the verified objective fix. See [the hands-on checklist](TESTING.md) for repeatable manual journeys.
+
+Save/launch fixes: cached mission and preference forms now refresh clean fields while retaining dirty drafts. Confirmed mission responses populate detail/objective/library caches and cancel older reads. New mission navigation retains explicit save confirmation; invalid saves state that nothing was saved. All draft controls, including template and AI Apply, lock while submitting. Future launches let the backend read the current saved speed instead of supplying a potentially stale cached value. An active run appears only on its own mission card; other cards identify the blocking mission and disable Launch, so a newly saved mission cannot open an unrelated older run. Mission Control explains when saved missions become runs and that run configuration/speed are captured at launch.
+
+The focused seven-test save regression suite passed in 31.9 seconds. The full Chromium suite, including ten new persistence/launch checks, passed all **49 tests in 3.3 minutes** against disposable SQLite storage. The new checks cover stale cached forms, delayed preference reads with a dirty draft, pending-save controls, repeated saves/reloads, confirmation after create, follow-up read failure, deadline validation, an unrelated active run, fresh server speed despite cached dashboard preferences, and the exact speed-1 → build/save → reload → launch journey with all submitted parameters. The final production build and lint passed; all three real mock-AI checks passed in 14.1 seconds. No backend or user-data changes are included.
+
+Launch speed selection: each launchable mission card now exposes **Simulation speed (×)**, initialized from the saved preference. Explicit choices, including fractional speeds, are validated as finite and greater than 0 through 3600 and sent only in that run's creation request. **Use saved default** clears the override; untouched/default launches still let the backend read the current preference. Choices are independent across mission cards, lock during launch, and never update saved preferences or existing runs. Build/lint passed, all four new `launch-speed.spec.ts` tests passed in 12.4 seconds, and 22 existing flow/persistence/responsive regressions passed in 1.1 minutes against isolated SQLite storage.
+
+Mission-save notification verification: build/lint passed, all **57 Chromium tests passed in 2.0 minutes**, and all three real mock-AI checks passed in 13.7 seconds. Four new checks verify notification/redirect only after a confirmed write, preservation on failed/invalid writes, create/edit persistence, dismissal, expiry and the popup/top-of-dashboard layout at 390 px. Existing create/edit/clone and AI proposal tests now reopen the editor from the dashboard to verify reload. Saved cards are identified by mission UUID because names may repeat. Tests use disposable SQLite storage; backend source is unchanged.
+
+Screenshots were visually reviewed for desktop/mobile layout, readable telemetry axes, natural panel sizing and honest unavailable AI. Runtime and console-error checks passed for the desktop/390px real-data journeys. The initial 64-file implementation and subsequent test additions remain inside the assigned frontend/test scope. The frontend lint configuration excludes generated `dist/` and Vite dependency caches so lint remains valid after builds/browser runs.
 
 For local review, run `npm run dev`, then open `http://127.0.0.1:5173`. The normal development store is separate from the disposable Playwright databases.
 
@@ -69,14 +82,16 @@ Setup uses the existing manifests: `npm ci`, `npm run setup` (uv and Python 3.12
 
 ### Real backend versus fixtures
 
-| Tests                                      | Evidence                                                                                                                                                                                                                                                                                   |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `commandgrid-flow.spec.ts`                 | Real API persistence, engine, runner, WebSockets, success with optional failure, required failure, pause freeze, early finish, termination/reset, natural completion, active/delete/resource conflicts, launch race, historical snapshots and report comparison. No engine/state fixtures. |
-| `forms.spec.ts`                            | Real mission/objective writes, reload, scalar metadata, team regeneration (including repeated edits), identity preservation and atomic required swap. One targeted 422 fixture verifies field errors/draft retention.                                                                      |
-| `foundation.spec.ts`, `responsive.spec.ts` | Actual backend navigation, desktop/390px layouts, real map keyboard selection, no horizontal overflow or runtime errors, chart table alternatives, dialog focus/Escape/restore and persisted future-speed settings.                                                                        |
-| `transport.spec.ts`                        | Actual server state seeds plus targeted delayed REST/WS/command/error fixtures; exercises runtime cache/state/request code, immutable retries and telemetry deduplication without pretending fixture state is a real simulation.                                                           |
-| `connection.spec.ts`                       | Targeted WS reconnect/malformed/run-change/disposal fixtures; actual backend polling recovers a missed real completion/report.                                                                                                                                                             |
-| `ai.spec.ts`                               | Actual unavailable AI with a successful core run; labeled provider/proposal/rate-limit/explanation/chat/narrative fixtures verify UI boundaries, explicit Save, identity, validation, safe text and numerical isolation.                                                                   |
+| Tests                                       | Evidence                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commandgrid-flow.spec.ts`                  | Real API persistence, engine, runner, WebSockets, success with optional failure, required failure, pause freeze, early finish, termination/reset, natural completion, active/delete/resource conflicts, launch race, historical snapshots and report comparison. No engine/state fixtures.                     |
+| `forms.spec.ts`                             | Real mission/objective writes, reload, scalar metadata, team regeneration (including repeated edits), identity preservation and atomic required swap. One targeted 422 fixture verifies field errors/draft retention.                                                                                          |
+| `persistence.spec.ts`                       | Real settings and mission persistence, clean/dirty form refresh, repeated saves, confirmation/validation, pending-save locking, current server launch speed and the correct mission snapshot. Targeted read failures/delays exercise cache and draft safety.                                                   |
+| `foundation.spec.ts`, `responsive.spec.ts`  | Actual backend navigation, desktop/390px layouts, real map keyboard selection, no horizontal overflow or runtime errors, chart table alternatives, dialog focus/Escape/restore and persisted future-speed settings.                                                                                            |
+| `transport.spec.ts`                         | Actual server state seeds plus targeted delayed REST/WS/command/error fixtures; exercises runtime cache/state/request code, immutable retries and telemetry deduplication without pretending fixture state is a real simulation.                                                                               |
+| `connection.spec.ts`                        | Targeted WS reconnect/malformed/run-change/disposal fixtures; actual backend polling recovers a missed real completion/report.                                                                                                                                                                                 |
+| `ai.spec.ts`                                | Actual unavailable AI with a successful core run; labeled provider/proposal/rate-limit/explanation/chat/narrative fixtures verify UI boundaries, explicit Save, identity, validation, safe text and numerical isolation.                                                                                       |
+| `mock-ai.smoke.ts` with `mock-ai.config.ts` | Real backend mock service, no successful-response fixtures: mission/objective review, separate saves, identity preservation, explanation/chat numerical isolation and persisted report narrative after reload. Live providers are disabled with empty credentials; root Playwright configuration is unchanged. |
 
 Default Playwright uses a newly isolated **SQLite** database for each invocation, as configured by the existing runner. Backend unit/integration tests also run with their default isolated storage. These checks do **not** verify PostgreSQL/TimescaleDB. The two PostgreSQL-only backend tests are skipped without `TEST_DATABASE_URL`; the A/B handoff's older Timescale results are historical, not results of this frontend change.
 
@@ -93,15 +108,16 @@ All screenshots capture real SQLite-backed API/engine data, never Aurora preview
 - Application: `src/App.tsx`, `src/main.tsx`, `src/workspace.css`, `src/utils/format.ts`, `.oxlintrc.json`.
 - Layout/map: `src/components/layout/AppLayout.tsx`, `src/components/dashboard/ScenarioMap.tsx`.
 - Pages: `Dashboard.tsx`, `MissionBuilder.tsx`, new `ObjectiveDesigner.tsx`, `MissionControl.tsx`, `AfterActionReport.tsx`, `Settings.tsx` in `src/pages/`.
-- Public types/UI state: `src/types/mission.ts`, `src/store/workspace.ts`.
+- Public types/UI state: `src/types/mission.ts`, `src/store/workspace.ts`, `src/store/notifications.ts`.
 - Services: `api.ts`, `client.ts`, `queries.ts`, `state.ts`, `stream.ts`, `commands.ts`, `history.ts` in `src/services/`.
 - Mission drafts: `validation.ts`, `templates.ts`, `useDirtyGuard.ts` in `src/features/missions/`; `MissionForm.tsx`, `ObjectiveEditor.tsx` in `src/components/missions/`.
-- Shared feedback/confirmation: `Feedback.tsx`, `Confirm.tsx`, `confirmation.ts` in `src/components/ui/`.
+- Shared feedback/confirmation: `Feedback.tsx`, `Confirm.tsx`, `confirmation.ts`, `NotificationToast.tsx` in `src/components/ui/`.
 - Control: `Commands.tsx`, `Events.tsx`, `ObjectiveResults.tsx` in `src/components/control/`.
 - Reports: `Telemetry.tsx`, `Comparison.tsx` in `src/components/reports/`.
 - AI: `useAI.ts`, `types.ts`, `Availability.tsx`, `Provenance.tsx`, `ProposalPanel.tsx`, `Assistant.tsx`, `ReportNarrative.tsx` in `src/components/ai/`.
 - Removed unused preview modules: `src/data/demoMission.ts`, `src/types/preview.ts`, `src/components/layout/PlannedPage.tsx`.
 - Tests: updated `../e2e/foundation.spec.ts`; new `helpers.ts`, `transport.spec.ts`, `forms.spec.ts`, `commandgrid-flow.spec.ts`, `connection.spec.ts`, `ai.spec.ts`, `responsive.spec.ts` in `../e2e/`.
+- Testing additions: `../e2e/mock-ai.config.ts`, `../e2e/mock-ai.smoke.ts`, `../e2e/persistence.spec.ts`, `../e2e/launch-speed.spec.ts`, `../e2e/save-notification.spec.ts`, and the manual checklist `TESTING.md`.
 - Handoff: this README and ten screenshots in `screenshots/`.
 
 ## Milestones and integration
@@ -118,4 +134,4 @@ All screenshots capture real SQLite-backed API/engine data, never Aurora preview
 
 No backend interface/dependency change is required. The requested `docs/superpowers/plans/2026-10-10-commandgrid-part-c-complete.md` does not exist in the integrated checkout; progress is recorded here rather than creating or modifying an unrelated plan. The named executing-plans/Caveman skills were not installed, so the assignment and available repository contracts were followed directly. No coordinator thread was provided, and no external messages were sent.
 
-Remaining qualification: verify live provider calls and frontend-driven backend mock persistence; coordinate an isolated Timescale browser configuration if that storage evidence is needed. No application defects are currently known after the full regression. No paid infrastructure was provisioned.
+Remaining qualification: verify live provider calls; coordinate an isolated Timescale browser configuration if that storage evidence is needed. No application defects were found by these additional checks. No paid infrastructure was provisioned.

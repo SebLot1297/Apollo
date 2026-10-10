@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -131,37 +131,55 @@ function PreferencesForm({ initial }: { initial: SettingsData }) {
       demo_mode: initial.demo_mode,
       simulation_speed: initial.simulation_speed,
     },
+    values: {
+      ai_provider: initial.ai_provider,
+      demo_mode: initial.demo_mode,
+      simulation_speed: initial.simulation_speed,
+    },
+    resetOptions: { keepDirtyValues: true },
     resolver: zodResolver(schema),
   })
   useDirtyGuard(form.formState.isDirty)
+  const saving = useRef(false)
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    void form.handleSubmit(async (values) => {
+      if (saving.current) return
+      saving.current = true
+      setError(null)
+      setSaved(false)
+      try {
+        const result = await api.saveSettings(values)
+        await client.cancelQueries({ queryKey: keys.settings })
+        client.setQueryData(keys.settings, result)
+        form.reset({
+          ai_provider: result.ai_provider,
+          demo_mode: result.demo_mode,
+          simulation_speed: result.simulation_speed,
+        })
+        setSaved(true)
+        void client.invalidateQueries({ queryKey: keys.providers })
+      } catch (failure) {
+        setError(failure)
+      } finally {
+        saving.current = false
+      }
+    })(event)
+  }
   return (
-    <form
-      className="panel cg-content cg-form"
-      noValidate
-      onSubmit={form.handleSubmit(async (values) => {
-        setError(null)
-        setSaved(false)
-        try {
-          const result = await api.saveSettings(values)
-          client.setQueryData(keys.settings, () => result)
-          await client.invalidateQueries({ queryKey: keys.providers })
-          form.reset(values)
-          setSaved(true)
-        } catch (failure) {
-          setError(failure)
-        }
-      })}
-    >
+    <form className="panel cg-content cg-form" noValidate onSubmit={submit}>
       <h2 className="cg-section-title">Preferences</h2>
       <ErrorNotice error={error} />
-      {saved && (
+      {saved && !form.formState.isDirty && (
         <p className="cg-notice success" role="status">
           Preferences saved to the server.
         </p>
       )}
       <label className="cg-field">
         <span>Preferred AI provider</span>
-        <select {...form.register('ai_provider')}>
+        <select
+          disabled={form.formState.isSubmitting}
+          {...form.register('ai_provider')}
+        >
           <option value="auto">Automatic</option>
           <option value="gemini">Gemini</option>
           <option value="qwen">Qwen</option>
@@ -169,7 +187,11 @@ function PreferencesForm({ initial }: { initial: SettingsData }) {
         </select>
       </label>
       <label className="cg-check">
-        <input type="checkbox" {...form.register('demo_mode')} />
+        <input
+          type="checkbox"
+          disabled={form.formState.isSubmitting}
+          {...form.register('demo_mode')}
+        />
         Demo mode
       </label>
       <label className="cg-field">
@@ -177,6 +199,7 @@ function PreferencesForm({ initial }: { initial: SettingsData }) {
         <input
           type="number"
           step="any"
+          disabled={form.formState.isSubmitting}
           {...form.register('simulation_speed', { valueAsNumber: true })}
           aria-invalid={Boolean(form.formState.errors.simulation_speed)}
         />

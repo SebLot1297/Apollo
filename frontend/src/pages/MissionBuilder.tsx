@@ -9,8 +9,9 @@ import {
   cloneMission,
 } from '../features/missions/templates'
 import { api } from '../services/api'
-import { useMission, useRegistry, invalidateMission } from '../services/queries'
+import { useMission, useRegistry, cacheMission } from '../services/queries'
 import type { MissionConfiguration, Registry } from '../types/mission'
+import { useNotifications } from '../store/notifications'
 export default function MissionBuilder() {
   const { missionId = '' } = useParams(),
     [search] = useSearchParams()
@@ -69,20 +70,25 @@ function BuilderEditor({
 }) {
   const client = useQueryClient(),
     navigate = useNavigate()
+  const notify = useNotifications((state) => state.notify)
   const [initial] = useState(() => (cloning ? cloneMission(source) : source))
   return (
     <MissionForm
-      initial={initial}
+      initial={editing ? source : initial}
       registry={registry}
       editing={editing}
       onSave={async (configuration) => {
         const saved = await api.saveMission(configuration, editing)
-        await invalidateMission(client, saved.id)
+        await cacheMission(client, saved)
         return saved
       }}
-      afterSave={(saved) =>
-        navigate(`/mission-builder/${saved.id}`, { replace: true })
-      }
+      afterSave={() => {
+        notify('mission saved successfully')
+        navigate('/', { replace: true })
+        requestAnimationFrame(() =>
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' }),
+        )
+      }}
     />
   )
 }

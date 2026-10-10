@@ -86,6 +86,26 @@ export async function saveConfiguration(
   expect(response.status()).toBe(201)
   return (await response.json()) as MissionConfiguration
 }
+export async function saveMissionFromUI(page: Page) {
+  const response = page.waitForResponse(
+    (result) =>
+      /\/api\/v1\/missions(?:\/[\da-f-]+)?$/.test(result.url()) &&
+      ['POST', 'PUT'].includes(result.request().method()) &&
+      result.ok(),
+  )
+  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
+  const saved = (await (await response).json()) as MissionConfiguration
+  await expect(page).toHaveURL('http://127.0.0.1:5173/')
+  await expect(page.locator('.cg-toast')).toHaveText(
+    'mission saved successfully',
+  )
+  await expect(
+    page
+      .getByRole('article')
+      .filter({ has: page.locator(`a[href="/mission-builder/${saved.id}"]`) }),
+  ).toBeVisible()
+  return saved
+}
 export async function createRun(
   request: APIRequestContext,
   mission: MissionConfiguration,

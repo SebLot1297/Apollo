@@ -182,7 +182,7 @@ export const api = {
   createRun: (
     mission_id: string,
     random_seed: number,
-    time_multiplier: number,
+    time_multiplier?: number,
   ) =>
     request<MissionState>('/simulations', {
       method: 'POST',

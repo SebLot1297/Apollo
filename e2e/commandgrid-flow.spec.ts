@@ -7,6 +7,7 @@ import {
   launch,
   resetWorkspace,
   saveConfiguration,
+  saveMissionFromUI,
   startAndResolvePower,
   screenshot,
 } from './helpers'
@@ -63,9 +64,8 @@ test('real UI create/edit/save, commands, pause/resume, and persisted successful
     .getByLabel('Threshold (%)', { exact: true })
     .fill('100')
   await page.getByRole('button', { name: 'Next step' }).click()
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
-  await expect(page).toHaveURL(/\/mission-builder\/[\da-f-]+$/)
-  const missionId = page.url().split('/').at(-1)!
+  const missionId = (await saveMissionFromUI(page)).id
+  await page.goto(`/mission-builder/${missionId}`)
   await page.getByRole('button', { name: '2 · Operational conditions' }).click()
   await page.getByLabel('Resource level (%)', { exact: true }).fill('72')
   await page.getByRole('button', { name: '3 · Objectives' }).click()
@@ -80,8 +80,9 @@ test('real UI create/edit/save, commands, pause/resume, and persisted successful
       response.request().method() === 'PUT' &&
       response.ok(),
   )
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
+  await saveMissionFromUI(page)
   await saved
+  await page.goto(`/mission-builder/${missionId}`)
   await page.reload()
   await page.getByRole('button', { name: '2 · Operational conditions' }).click()
   await expect(
