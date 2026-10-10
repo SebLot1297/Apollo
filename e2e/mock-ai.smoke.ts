@@ -3,6 +3,7 @@ import {
   configuration,
   resetWorkspace,
   saveConfiguration,
+  saveMissionFromUI,
   launch,
   startAndResolvePower,
   finish,
@@ -63,15 +64,14 @@ test('real mock mission and objective proposals require review, Apply and separa
     .getByLabel('Mission name', { exact: true })
     .fill('Reviewed real mock proposal')
   await page.getByRole('button', { name: '4 · Review and save' }).click()
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
-  await expect(page).toHaveURL(/\/mission-builder\/[\da-f-]+$/)
-  const missionId = page.url().split('/').at(-1)!
+  const missionId = (await saveMissionFromUI(page)).id
   const saved = (await (
     await request.get(`/api/v1/missions/${missionId}`)
   ).json()) as MissionConfiguration
   expect(saved.id).not.toBe(generated.data.id)
   expect(saved.name).toBe('Reviewed real mock proposal')
   expect(saved.objectives).toHaveLength(2)
+  await page.goto(`/mission-builder/${missionId}`)
   await page.reload()
   await page
     .getByRole('combobox', { name: 'AI provider', exact: true })
@@ -105,7 +105,7 @@ test('real mock mission and objective proposals require review, Apply and separa
       response.request().method() === 'PUT' &&
       response.ok(),
   )
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
+  await saveMissionFromUI(page)
   await updatedResponse
   const updated = (await (
     await request.get(`/api/v1/missions/${missionId}`)
@@ -117,6 +117,7 @@ test('real mock mission and objective proposals require review, Apply and separa
   expect(
     new Set(updated.objectives.map((objective) => objective.id)).size,
   ).toBe(4)
+  await page.goto(`/mission-builder/${missionId}`)
   await page.reload()
   await page.getByRole('button', { name: '3 · Objectives' }).click()
   await expect(page.locator('fieldset.cg-objective')).toHaveCount(4)
@@ -215,10 +216,9 @@ test('real unsaved objective requests omit mission identity and add only selecte
   await page.getByLabel(/Select suggestion 1:/).check()
   await page.getByRole('button', { name: 'Append selected objectives' }).click()
   await page.getByRole('button', { name: '4 · Review and save' }).click()
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
-  await expect(page).toHaveURL(/\/mission-builder\/[\da-f-]+$/)
+  const created = await saveMissionFromUI(page)
   const saved = await (
-    await request.get(`/api/v1/missions/${page.url().split('/').at(-1)}`)
+    await request.get(`/api/v1/missions/${created.id}`)
   ).json()
   expect(saved.objectives).toHaveLength(4)
   expect(

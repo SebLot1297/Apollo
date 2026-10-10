@@ -5,6 +5,7 @@ import {
   createRun,
   resetWorkspace,
   saveConfiguration,
+  saveMissionFromUI,
 } from './helpers'
 
 test.beforeEach(async ({ request }) => resetWorkspace(request))
@@ -148,12 +149,7 @@ test('speed one and a new UI-built mission save visibly and launch with all subm
   await page
     .getByRole('checkbox', { name: 'Backup power enabled', exact: true })
     .uncheck()
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
-  await expect(page).toHaveURL(/\/mission-builder\/[\da-f-]+$/)
-  await expect(
-    page.getByText('Configuration saved to the backend.'),
-  ).toBeVisible()
-  const id = page.url().split('/').at(-1)!
+  const id = (await saveMissionFromUI(page)).id
   const saved = await (await request.get(`/api/v1/missions/${id}`)).json()
   expect(saved.parameters).toMatchObject({
     weather_severity: 23,
@@ -164,6 +160,7 @@ test('speed one and a new UI-built mission save visibly and launch with all subm
     communication_reliability: 61,
     backup_power_enabled: false,
   })
+  await page.goto(`/mission-builder/${id}`)
   await page.reload()
   await page.getByRole('button', { name: '2 · Operational conditions' }).click()
   for (const [label, value] of parameters)
@@ -212,15 +209,11 @@ test('mission editor refreshes cached configuration before editing and persists 
   for (const suffix of ['first edit', 'second edit']) {
     await name.fill(`${mission.name} ${suffix}`)
     await page.getByRole('button', { name: '4 · Review and save' }).click()
-    await page
-      .getByRole('button', { name: 'Save mission', exact: true })
-      .click()
-    await expect(
-      page.getByText('Configuration saved to the backend.'),
-    ).toBeVisible()
+    await saveMissionFromUI(page)
     expect(
       (await (await request.get(`/api/v1/missions/${mission.id}`)).json()).name,
     ).toBe(`${mission.name} ${suffix}`)
+    await page.goto(`/mission-builder/${mission.id}`)
   }
   await page.reload()
   await expect(name).toHaveValue(`${mission.name} second edit`)
@@ -270,7 +263,7 @@ test('preferences cannot change underneath a pending save and the next edit clea
   )
 })
 
-test('mission draft controls stay locked during a save and new edits clear saved feedback', async ({
+test('mission draft controls stay locked during a save and confirmed saves return to the dashboard', async ({
   page,
   request,
 }) => {
@@ -306,15 +299,14 @@ test('mission draft controls stay locked during a save and new edits clear saved
   } finally {
     release()
   }
-  await expect(
-    page.getByText('Configuration saved to the backend.'),
-  ).toBeVisible()
-  await page
-    .getByLabel('Mission name', { exact: true })
-    .fill('Next unsaved edit')
-  await expect(
-    page.getByText('Configuration saved to the backend.'),
-  ).toHaveCount(0)
+  await expect(page).toHaveURL('http://127.0.0.1:5173/')
+  await expect(page.locator('.cg-toast')).toHaveText(
+    'mission saved successfully',
+  )
+  await page.goto(`/mission-builder/${mission.id}`)
+  await expect(page.getByLabel('Mission name', { exact: true })).toHaveValue(
+    mission.name,
+  )
 })
 
 test('a persisted new mission remains visible even if the follow-up read fails', async ({
@@ -333,19 +325,12 @@ test('a persisted new mission remains visible even if the follow-up read fails',
       json: { detail: 'Follow-up read unavailable' },
     })
   })
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
-  await expect(page).toHaveURL(/\/mission-builder\/[\da-f-]+$/)
-  await expect(
-    page.getByText('Configuration saved to the backend.'),
-  ).toBeVisible()
-  await expect(page.getByLabel('Mission name', { exact: true })).toHaveValue(
-    'Confirmed saved mission',
-  )
-  const id = page.url().split('/').at(-1)
+  const id = (await saveMissionFromUI(page)).id
   expect(
     (await (await request.get(`/api/v1/missions/${id}`)).json()).name,
   ).toBe('Confirmed saved mission')
   await page.unroute(/\/api\/v1\/missions\/[\da-f-]+$/)
+  await page.goto(`/mission-builder/${id}`)
   await page.reload()
   await expect(page.getByLabel('Mission name', { exact: true })).toHaveValue(
     'Confirmed saved mission',
@@ -374,9 +359,7 @@ test('invalid mission save explains that nothing was saved and focuses the corre
   await expect(deadline).toBeFocused()
   expect(writes).toBe(0)
   await deadline.fill('600')
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
-  await expect(page).toHaveURL(/\/mission-builder\/[\da-f-]+$/)
-  const id = page.url().split('/').at(-1)
+  const id = (await saveMissionFromUI(page)).id
   expect(
     (await (await request.get(`/api/v1/missions/${id}`)).json())
       .duration_seconds,

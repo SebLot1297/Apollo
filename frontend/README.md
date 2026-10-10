@@ -14,7 +14,7 @@ Implemented against integrated A/B baseline `c5f52094bae52ad1109a5ee58e6c29085b6
 | `/reports`, `/reports/:runId`                 | Persisted list/detail, authoritative success, full configuration snapshot, metrics, historical objective reasons/achievement times, telemetry table/chart, events, command effects, separate optional AI narrative and two-report comparison. |
 | `/settings`                                   | Persistent provider/demo/future-speed preferences, database mode, backend/engine readiness and configured versus available provider status.                                                                                                   |
 
-Only Communications Recovery is available. All terrain/locations are fictional. The obsolete Aurora preview source and planned-page component have been removed. Forms retain unsaved drafts after errors and confirm dirty navigation. Dialogs trap/restore focus and support Escape. Mobile navigation, visible keyboard focus, reduced motion and chart tables are supported.
+Only Communications Recovery is available. All terrain/locations are fictional. The obsolete Aurora preview source and planned-page component have been removed. Forms retain unsaved drafts after errors and confirm dirty navigation. Confirmed mission saves return to the top of the Dashboard and show the screen-reader-announced **mission saved successfully** popup, dismissible manually or after eight seconds. Failed or invalid saves remain in the editor without success feedback. Dialogs trap/restore focus and support Escape. Mobile navigation, visible keyboard focus, reduced motion and chart tables are supported.
 
 Core journey: create a valid configuration → save/reload → launch → explicitly start → trigger, acknowledge and restore a synthetic incident → pause/resume → finish at current elapsed time → inspect/reload persisted results → compare previous runs → reset to a new stopped run while keeping the old report. Termination, natural duration completion, one-active-run conflicts and historical reports after source edits/deletion are covered.
 
@@ -72,6 +72,8 @@ The focused seven-test save regression suite passed in 31.9 seconds. The full Ch
 
 Launch speed selection: each launchable mission card now exposes **Simulation speed (×)**, initialized from the saved preference. Explicit choices, including fractional speeds, are validated as finite and greater than 0 through 3600 and sent only in that run's creation request. **Use saved default** clears the override; untouched/default launches still let the backend read the current preference. Choices are independent across mission cards, lock during launch, and never update saved preferences or existing runs. Build/lint passed, all four new `launch-speed.spec.ts` tests passed in 12.4 seconds, and 22 existing flow/persistence/responsive regressions passed in 1.1 minutes against isolated SQLite storage.
 
+Mission-save notification verification: build/lint passed, all **57 Chromium tests passed in 2.0 minutes**, and all three real mock-AI checks passed in 13.7 seconds. Four new checks verify notification/redirect only after a confirmed write, preservation on failed/invalid writes, create/edit persistence, dismissal, expiry and the popup/top-of-dashboard layout at 390 px. Existing create/edit/clone and AI proposal tests now reopen the editor from the dashboard to verify reload. Saved cards are identified by mission UUID because names may repeat. Tests use disposable SQLite storage; backend source is unchanged.
+
 Screenshots were visually reviewed for desktop/mobile layout, readable telemetry axes, natural panel sizing and honest unavailable AI. Runtime and console-error checks passed for the desktop/390px real-data journeys. The initial 64-file implementation and subsequent test additions remain inside the assigned frontend/test scope. The frontend lint configuration excludes generated `dist/` and Vite dependency caches so lint remains valid after builds/browser runs.
 
 For local review, run `npm run dev`, then open `http://127.0.0.1:5173`. The normal development store is separate from the disposable Playwright databases.
@@ -106,16 +108,16 @@ All screenshots capture real SQLite-backed API/engine data, never Aurora preview
 - Application: `src/App.tsx`, `src/main.tsx`, `src/workspace.css`, `src/utils/format.ts`, `.oxlintrc.json`.
 - Layout/map: `src/components/layout/AppLayout.tsx`, `src/components/dashboard/ScenarioMap.tsx`.
 - Pages: `Dashboard.tsx`, `MissionBuilder.tsx`, new `ObjectiveDesigner.tsx`, `MissionControl.tsx`, `AfterActionReport.tsx`, `Settings.tsx` in `src/pages/`.
-- Public types/UI state: `src/types/mission.ts`, `src/store/workspace.ts`.
+- Public types/UI state: `src/types/mission.ts`, `src/store/workspace.ts`, `src/store/notifications.ts`.
 - Services: `api.ts`, `client.ts`, `queries.ts`, `state.ts`, `stream.ts`, `commands.ts`, `history.ts` in `src/services/`.
 - Mission drafts: `validation.ts`, `templates.ts`, `useDirtyGuard.ts` in `src/features/missions/`; `MissionForm.tsx`, `ObjectiveEditor.tsx` in `src/components/missions/`.
-- Shared feedback/confirmation: `Feedback.tsx`, `Confirm.tsx`, `confirmation.ts` in `src/components/ui/`.
+- Shared feedback/confirmation: `Feedback.tsx`, `Confirm.tsx`, `confirmation.ts`, `NotificationToast.tsx` in `src/components/ui/`.
 - Control: `Commands.tsx`, `Events.tsx`, `ObjectiveResults.tsx` in `src/components/control/`.
 - Reports: `Telemetry.tsx`, `Comparison.tsx` in `src/components/reports/`.
 - AI: `useAI.ts`, `types.ts`, `Availability.tsx`, `Provenance.tsx`, `ProposalPanel.tsx`, `Assistant.tsx`, `ReportNarrative.tsx` in `src/components/ai/`.
 - Removed unused preview modules: `src/data/demoMission.ts`, `src/types/preview.ts`, `src/components/layout/PlannedPage.tsx`.
 - Tests: updated `../e2e/foundation.spec.ts`; new `helpers.ts`, `transport.spec.ts`, `forms.spec.ts`, `commandgrid-flow.spec.ts`, `connection.spec.ts`, `ai.spec.ts`, `responsive.spec.ts` in `../e2e/`.
-- Testing additions: `../e2e/mock-ai.config.ts`, `../e2e/mock-ai.smoke.ts`, and the manual checklist `TESTING.md`.
+- Testing additions: `../e2e/mock-ai.config.ts`, `../e2e/mock-ai.smoke.ts`, `../e2e/persistence.spec.ts`, `../e2e/launch-speed.spec.ts`, `../e2e/save-notification.spec.ts`, and the manual checklist `TESTING.md`.
 - Handoff: this README and ten screenshots in `screenshots/`.
 
 ## Milestones and integration

@@ -45,7 +45,6 @@ export default function MissionForm({
   registry,
   editing,
   objectivesOnly = false,
-  savedInitially = false,
   onSave,
   afterSave,
 }: {
@@ -53,7 +52,6 @@ export default function MissionForm({
   registry: Registry
   editing: boolean
   objectivesOnly?: boolean
-  savedInitially?: boolean
   onSave: (mission: MissionConfiguration) => Promise<MissionConfiguration>
   afterSave?: (mission: MissionConfiguration) => void
 }) {
@@ -73,7 +71,7 @@ export default function MissionForm({
       : initial
   const [step, setStep] = useState(0),
     [error, setError] = useState<unknown>(null),
-    [saved, setSaved] = useState(savedInitially)
+    [saved, setSaved] = useState(false)
   const confirm = useConfirm(),
     allowNavigation = useDirtyGuard(form.formState.isDirty)
   const saving = useRef(false)

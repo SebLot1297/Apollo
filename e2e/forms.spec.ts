@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test'
-import { configuration, resetWorkspace, saveConfiguration } from './helpers'
+import {
+  configuration,
+  resetWorkspace,
+  saveConfiguration,
+  saveMissionFromUI,
+} from './helpers'
 test.beforeEach(async ({ request }) => resetWorkspace(request))
 
 test('replace all template objectives, repeatedly add/delete, and persist the replacement draft', async ({
@@ -69,10 +74,9 @@ test('replace all template objectives, repeatedly add/delete, and persist the re
     objectives.first().getByLabel('Threshold (count)', { exact: true }),
   ).toHaveValue('1')
   await page.getByRole('button', { name: '4 · Review and save' }).click()
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
-  await expect(page).toHaveURL(/\/mission-builder\/[\da-f-]+$/)
+  const created = await saveMissionFromUI(page)
   const mission = await (
-    await request.get(`/api/v1/missions/${page.url().split('/').at(-1)}`)
+    await request.get(`/api/v1/missions/${created.id}`)
   ).json()
   expect(mission.objectives).toHaveLength(3)
   expect(
@@ -80,6 +84,7 @@ test('replace all template objectives, repeatedly add/delete, and persist the re
       .size,
   ).toBe(3)
   expect(mission.objectives[0].name).toBe('Replacement resolution')
+  await page.goto(`/mission-builder/${created.id}`)
   await page.reload()
   await page.getByRole('button', { name: '3 · Objectives' }).click()
   await expect(
@@ -242,8 +247,9 @@ test('team regeneration and scalar metadata persist; server errors preserve draf
       response.request().method() === 'PUT' &&
       response.ok(),
   )
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
+  await saveMissionFromUI(page)
   await savedResponse
+  await page.goto(`/mission-builder/${mission.id}`)
   await page.reload()
   await page.getByRole('button', { name: '2 · Operational conditions' }).click()
   await expect(
@@ -260,7 +266,7 @@ test('team regeneration and scalar metadata persist; server errors preserve draf
     number: 4.2,
     nothing: null,
   })
-  // A second count edit in the same mounted form must use the newly saved baseline.
+  // A second count edit must use the newly saved configuration as its baseline.
   await page.getByLabel('Support team count (count)', { exact: true }).fill('4')
   await page.getByRole('button', { name: '4 · Review and save' }).click()
   const secondResponse = page.waitForResponse(
@@ -269,7 +275,7 @@ test('team regeneration and scalar metadata persist; server errors preserve draf
       response.request().method() === 'PUT' &&
       response.ok(),
   )
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
+  await saveMissionFromUI(page)
   await secondResponse
   expect(
     (await (await request.get(`/api/v1/missions/${mission.id}`)).json())
@@ -304,9 +310,7 @@ test('clone generates fresh identities; dirty navigation requires explicit disca
     'Unsaved clone',
   )
   await page.getByRole('button', { name: '4 · Review and save' }).click()
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
-  await expect(page).toHaveURL(/\/mission-builder\/[\da-f-]+$/)
-  const clonedId = page.url().split('/').at(-1)!
+  const clonedId = (await saveMissionFromUI(page)).id
   expect(clonedId).not.toBe(mission.id)
   const cloned = await (
     await request.get(`/api/v1/missions/${clonedId}`)

@@ -11,6 +11,7 @@ import {
 import { api } from '../services/api'
 import { useMission, useRegistry, cacheMission } from '../services/queries'
 import type { MissionConfiguration, Registry } from '../types/mission'
+import { useNotifications } from '../store/notifications'
 export default function MissionBuilder() {
   const { missionId = '' } = useParams(),
     [search] = useSearchParams()
@@ -18,7 +19,6 @@ export default function MissionBuilder() {
     mission = useMission(missionId || cloneId),
     registry = useRegistry()
   const [blank] = useState(signalRestoreTemplate)
-  const [savedId, setSavedId] = useState('')
   const editing = Boolean(missionId)
   return (
     <div className="page cg-stack">
@@ -51,8 +51,6 @@ export default function MissionBuilder() {
             registry={registry.data}
             cloning={Boolean(cloneId)}
             editing={editing}
-            savedInitially={Boolean(missionId) && savedId === missionId}
-            onSaved={(saved) => setSavedId(saved.id)}
           />
         )
       )}
@@ -64,23 +62,19 @@ function BuilderEditor({
   registry,
   cloning,
   editing,
-  savedInitially,
-  onSaved,
 }: {
   source: MissionConfiguration
   registry: Registry
   cloning: boolean
   editing: boolean
-  savedInitially: boolean
-  onSaved: (mission: MissionConfiguration) => void
 }) {
   const client = useQueryClient(),
     navigate = useNavigate()
+  const notify = useNotifications((state) => state.notify)
   const [initial] = useState(() => (cloning ? cloneMission(source) : source))
   return (
     <MissionForm
       initial={editing ? source : initial}
-      savedInitially={savedInitially}
       registry={registry}
       editing={editing}
       onSave={async (configuration) => {
@@ -88,9 +82,12 @@ function BuilderEditor({
         await cacheMission(client, saved)
         return saved
       }}
-      afterSave={(saved) => {
-        onSaved(saved)
-        navigate(`/mission-builder/${saved.id}`, { replace: true })
+      afterSave={() => {
+        notify('mission saved successfully')
+        navigate('/', { replace: true })
+        requestAnimationFrame(() =>
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' }),
+        )
       }}
     />
   )
