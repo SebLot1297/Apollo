@@ -1,0 +1,105 @@
+@import 'tailwindcss';
+@theme {
+  --color-command-cyan: #76c8d8;
+  --color-command-green: #87b59d;
+}
+:root {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: #dce5eb;
+  background: #0b121a;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --bg: #0b121a;
+  --panel: #111b25;
+  --border: #24313d;
+  --muted: #91a0af;
+  --cyan: #76c8d8;
+  --green: #87b59d;
+  --amber: #dbb576;
+  --red: #e29590;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a {
+  touch-action: manipulation;
+}
+button {
+  cursor: pointer;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+button,
+input,
+textarea,
+select {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 4px;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px #76c8d812;
+}
+::selection {
+  color: #fff;
+  background: #316271;
+}
+svg {
+  flex-shrink: 0;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+button {
+  color: inherit;
+}
+small {
+  font-size: 11px;
+}
+::placeholder {
+  color: #6a7d8e;
+}
+select {
+  color-scheme: dark;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #334452;
+  border-radius: 4px;
+}
