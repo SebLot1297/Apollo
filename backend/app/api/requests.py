@@ -19,6 +19,7 @@ class Command(RequestModel):
         "start",
         "pause",
         "resume",
+        "set_speed",
         "trigger_incident",
         "activate_backup_communications",
         "activate_backup_power",

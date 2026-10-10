@@ -21,7 +21,7 @@ Configure backend-only values in the repository `.env` (ignored by Git); never p
 | `AI_MAX_OUTPUT_TOKENS` | `2048` | 64..8192 per request; raise if full mission output truncates. |
 | `AI_MAX_CONCURRENCY` | `2` | 1..8; gateway and standalone service are protected. |
 | `AI_REQUESTS_PER_MINUTE` | `12` | 1..120; rejected requests return 429 and `Retry-After: 60`. |
-| `AI_HEALTH_CACHE_SECONDS` | `60` | Metadata health cache, 1..3600 seconds. |
+| `AI_HEALTH_CACHE_SECONDS` | `60` | Successful metadata health cache, 1..3600 seconds; configured-provider failures expire within 5 seconds. |
 
 No credentials are needed for deterministic mock operation. No inference runs at startup or during ticks. Reading provider status can issue metadata probes when keys are configured; metadata probes do not prove inference quota or capacity.
 
@@ -49,9 +49,11 @@ Prompts are at most 8000 characters. Context is selected from known fields, limi
 
 Provider text is at most 64000 characters; Qwen response bodies are at most 262144 bytes. The Gemini SDK receives a request timeout and output-token cap; its completed response text is checked locally, rather than a custom streaming byte cap. Structured proposals reject duplicate keys, nonfinite constants, malformed JSON and invalid schemas. Proposals allow at most 20 new objectives and bounded prose/serialized size. Input objects are not modified.
 
-Standalone service queue plus work uses at most 90% of the configured deadline; live attempts use at most 80%, reserving time for validation/mock. Each live provider gets at most two attempts; only timeout, connection, 429 and 5xx failures retry once with a short bounded backoff. Authentication, schema, malformed-response and endpoint errors do not retry. A's gateway also times its semaphore wait, cancels over-deadline work and audits the resulting failure. Provider clients close during application shutdown; one cleanup failure does not skip other providers.
+Standalone service queue plus work uses at most 90% of the configured deadline; live attempts use at most 80%, reserving time for validation/mock. The live deadline is divided among configured providers only; a Gemini-only setup does not reserve time for disabled Qwen. Each live provider gets at most two attempts; only timeout, connection, 429 and 5xx failures retry once with a short bounded backoff. Authentication, schema, malformed-response and endpoint errors do not retry. A's gateway also times its semaphore wait, cancels over-deadline work and audits the resulting failure. Provider clients close during application shutdown; one cleanup failure does not skip other providers.
 
 `GET /ai/providers/status` and Settings return `provider/model/configured/available/detail`. Live `available=true` means a model metadata check succeeded, and the detail explicitly says **inference unverified**. Qwen must list the configured model; Gemini must permit model metadata access. No model generation is used for health. Disabled/unconfigured providers are unavailable. Concurrent status reads share cached probes; callers receive copies of status data.
+
+Failed probes include a fixed, credential-free reason such as `timeout`, `authentication_failed`, or `model_or_endpoint_not_found`. Configured-provider failures are cached for at most 5 seconds; the frontend rechecks every 10 seconds while a configured provider is unavailable, allowing transient failures to recover without a page reload. Restart `npm run dev` after editing backend `.env` values so the new configuration loads.
 
 ## Offline and optional live verification
 

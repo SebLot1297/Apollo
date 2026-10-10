@@ -78,7 +78,7 @@ def create_app(settings=None, *, engine_api=None, ai_service=None, start_runner=
                 "simulation_speed": settings.simulation_time_multiplier,
                 **(await asyncio.to_thread(store.settings)),
             }
-            gateway = AIGateway(store, settings, service)
+            gateway = AIGateway(store, settings, service, controller=controller)
             app.state.db, app.state.store, app.state.hub = db, store, hub
             app.state.controller, app.state.ai = controller, gateway
             app.state.preferences = preferences
