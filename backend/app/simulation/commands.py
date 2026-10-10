@@ -2,19 +2,28 @@
 from uuid import UUID
 
 from app.schemas.simulation import CommandRecord
-from .clock import timestamp
+from .clock import finite_number, timestamp
 from .incidents import INCIDENT_DEFINITIONS, add_incident, emit, resolve_incident
 from .metrics import KIND_SYSTEM, refresh_systems, spend_resources
 
 COMMAND_PAYLOADS = {
     "start": set(), "pause": set(), "resume": set(), "finish": set(), "terminate": set(),
+    "set_speed": {"time_multiplier"},
     "trigger_incident": {"kind"}, "activate_backup_communications": set(),
     "activate_backup_power": set(), "run_equipment_diagnostic": set(),
     "restore_service": {"incident_id"}, "acknowledge_incident": {"incident_id"},
 }
+# Recovery actions are safe while paused: they change systems and resources without
+# advancing simulated time. Synthetic incident injection stays running-only.
 COMMAND_STATUSES = {
     "start": {"created"}, "pause": {"running"}, "resume": {"paused"},
     "finish": {"running", "paused"}, "terminate": {"created", "running", "paused"},
+    "set_speed": {"created", "running", "paused"},
+    "acknowledge_incident": {"running", "paused"},
+    "activate_backup_communications": {"running", "paused"},
+    "activate_backup_power": {"running", "paused"},
+    "run_equipment_diagnostic": {"running", "paused"},
+    "restore_service": {"running", "paused"},
 }
 
 
@@ -34,6 +43,13 @@ def validate_command(state, command_type, payload):
         kind = payload.get("kind")
         if not isinstance(kind, str) or kind not in INCIDENT_DEFINITIONS:
             raise ValueError("trigger_incident requires a supported payload.kind")
+    if command_type == "set_speed":
+        if "time_multiplier" not in payload:
+            raise ValueError("set_speed requires payload.time_multiplier")
+        multiplier = finite_number(payload["time_multiplier"], "time_multiplier", positive=True)
+        if multiplier > 3600:
+            raise ValueError("time_multiplier must be at most 3600")
+        payload = {**payload, "time_multiplier": multiplier}
     if command_type == "acknowledge_incident" and "incident_id" not in payload:
         raise ValueError("acknowledge_incident requires payload.incident_id")
     if "incident_id" in payload:
@@ -84,6 +100,10 @@ def execute(state, command_type, payload):
     if command_type in ("start", "pause", "resume"):
         state.status = {"start": "running", "pause": "paused", "resume": "running"}[command_type]
         effect = f"Run is {state.status} at {state.elapsed_time_seconds:g} simulated seconds"
+    elif command_type == "set_speed":
+        previous = state.time_multiplier
+        state.time_multiplier = payload["time_multiplier"]
+        effect = f"Simulation speed changed from {previous:g}x to {state.time_multiplier:g}x"
     elif command_type == "finish":
         # The engine finalizes objective evidence before selecting completed/failed.
         effect = "Finished at the actual elapsed time without advancing the clock"

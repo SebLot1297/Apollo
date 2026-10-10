@@ -111,6 +111,26 @@ class MockAIProvider:
             kind = incident.get("kind")
             if isinstance(kind, str) and kind in hints:
                 pieces.append(hints[kind])
+        strategy = context.get("recovery_plan")
+        if isinstance(strategy, dict):
+            steps = strategy.get("steps", [])
+            if isinstance(steps, list):
+                available = [
+                    step.get("title")
+                    for step in steps
+                    if isinstance(step, dict) and step.get("blocked_reason") is None and step.get("title")
+                ]
+                if available:
+                    pieces.append("Deterministic strategy: prioritise " + "; ".join(available[:6]) + ".")
+                for step in steps[:6]:
+                    if isinstance(step, dict) and step.get("blocked_reason"):
+                        pieces.append(
+                            f"Blocked: {step.get('title', 'step')} — {step['blocked_reason']}."
+                        )
+            outlook = strategy.get("objective_outlook")
+            if isinstance(outlook, dict):
+                verdict = "would" if outlook.get("can_finish_successfully") else "would not yet"
+                pieces.append(f"Finishing now {verdict} satisfy all required objectives.")
         if len(pieces) == 1:
             pieces.append("No simulation metrics were supplied. Select a run to explain recorded conditions.")
         pieces.append("No success probability is calculated. Commands require an explicit operator action.")

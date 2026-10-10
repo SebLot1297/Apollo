@@ -152,6 +152,10 @@ export const useProviders = () =>
     queryKey: keys.providers,
     queryFn: ({ signal }) => api.providers(signal),
     staleTime: 30000,
+    refetchInterval: (query) =>
+      query.state.data?.some((status) => status.configured && !status.available)
+        ? 10000
+        : false,
   })
 export const useReadiness = () =>
   useQuery({

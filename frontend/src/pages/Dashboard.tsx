@@ -72,6 +72,17 @@ export default function Dashboard() {
       void client.invalidateQueries({ queryKey: keys.runs })
     },
   })
+  const launchDemo = useMutation({
+    mutationFn: () => api.createDemo(),
+    onSuccess: (incoming) => {
+      const state = parseState(incoming)
+      cacheState(client, state.run_id, state)
+      useWorkspace.getState().selectRun(state.run_id)
+      void client.invalidateQueries({ queryKey: keys.runs })
+      navigate(`/mission-control/${state.run_id}`)
+    },
+    onError: setError,
+  })
   const remove = useMutation({
     mutationFn: api.deleteMission,
     onSuccess: (_, id) => void invalidateMission(client, id),
@@ -111,6 +122,23 @@ export default function Dashboard() {
         <Link className="button primary" to="/mission-builder">
           Create mission
         </Link>
+        <button
+          className="button"
+          disabled={launchDemo.isPending || Boolean(active) || !settings.data}
+          title={
+            active
+              ? 'Finish or terminate the active run before launching the demo.'
+              : 'Start the repeatable guided Hackathon Recovery Demo.'
+          }
+          onClick={() => {
+            if (!launchDemo.isPending) {
+              setError(null)
+              launchDemo.mutate()
+            }
+          }}
+        >
+          Launch guided demo
+        </button>
       </PageHeading>
       <ErrorNotice
         error={

@@ -10,6 +10,7 @@ import type {
   Provider,
   ProviderStatus,
   Readiness,
+  RecoveryPlan,
   Registry,
   Report,
   Settings,
@@ -188,6 +189,10 @@ export const api = {
       method: 'POST',
       body: { mission_id, random_seed, time_multiplier },
     }),
+  createDemo: () =>
+    request<MissionState>('/simulations/demo', { method: 'POST' }),
+  recoveryPlan: (runId: string, signal?: AbortSignal) =>
+    request<RecoveryPlan>(`/simulations/${id(runId)}/recovery-plan`, { signal }),
   command: (
     runId: string,
     body: {
