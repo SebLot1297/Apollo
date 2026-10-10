@@ -4,7 +4,9 @@ from uuid import UUID, uuid4
 
 from app.schemas.mission import MissionConfiguration
 from app.schemas.simulation import MissionState, SystemState
-from .clock import TERMINAL_STATUSES, end_time, finite_number, timestamp
+
+from .automatic_recovery import recover, schedule_recovery
+from .clock import end_time, finite_number, timestamp
 from .commands import execute, validate_command
 from .incidents import INCIDENT_DEFINITIONS, add_incident, emit, schedule_next
 from .metrics import health_status, refresh_metrics, refresh_systems, sample
@@ -16,6 +18,7 @@ def create_state(
     random_seed: int = 42,
     run_id=None,
     time_multiplier: float = 30,
+    recovery_mode: str = "manual",
 ) -> MissionState:
     multiplier = finite_number(time_multiplier, "time_multiplier", positive=True)
     if type(random_seed) is not int:
@@ -36,6 +39,7 @@ def create_state(
                               total_units=20 if key == "equipment" else None)
                for key, value in healths.items()}
     state = MissionState(run_id=identifier, mission_id=snapshot.id, mission=snapshot,
+        recovery_mode=recovery_mode,
         random_seed=random_seed, time_multiplier=multiplier, systems=systems,
         facilities=deepcopy(snapshot.facilities), support_teams=deepcopy(snapshot.support_teams),
         resource_remaining=parameters.resource_level, resource_anchor=parameters.resource_level)
@@ -51,6 +55,7 @@ def create_state(
 def _complete(state):
     evaluate(state, finalize=True)
     state.status = "completed" if required_pass(state) else "failed"
+    state.next_recovery_at_seconds = None
     emit(state, "run_completed", f"Run {state.status} at {state.elapsed_time_seconds:g}s; "
          "success requires every required objective to pass.")
 
@@ -59,16 +64,22 @@ def apply_command(
     state: MissionState,
     command_type: str,
     payload: dict | None = None,
+    *, source: str = "manual",
 ) -> MissionState:
-    validated = validate_command(state, command_type, payload)
+    if source not in ("manual", "automatic"):
+        raise ValueError("command source must be manual or automatic")
+    validated = validate_command(state, command_type, payload, automatic=source == "automatic")
     result = state.model_copy(deep=True)
     result.sequence += 1
-    execute(result, command_type, deepcopy(validated))
+    execute(result, command_type, deepcopy(validated), source=source)
+    if source == "manual" and command_type in ("start", "resume", "set_recovery_mode", "trigger_incident"):
+        schedule_recovery(result)
     refresh_metrics(result)
     evaluate(result)
     if command_type == "finish":
         _complete(result)
     elif command_type == "terminate":
+        result.next_recovery_at_seconds = None
         evaluate(result, finalize=True)
     sample(result)
     return result
@@ -93,6 +104,14 @@ def tick(
     while True:
         # Kind is a stable tie-breaker if two scheduled incidents coincide.
         kind, boundary = min(result.next_incident_at.items(), key=lambda item: (item[1], item[0]))
+        recovery_at = result.next_recovery_at_seconds if result.recovery_mode == "automatic" else None
+        if recovery_at is not None and recovery_at < boundary and recovery_at <= endpoint:
+            _advance(result, recovery_at)
+            result = recover(result, apply_command)
+            refresh_metrics(result)
+            evaluate(result)
+            sample(result)
+            continue
         if boundary > endpoint:
             break
         _advance(result, boundary)
@@ -101,6 +120,7 @@ def tick(
         evaluate(result)
         sample(result)
         schedule_next(result, kind, boundary)
+        schedule_recovery(result)
     _advance(result, endpoint)
     if endpoint == result.mission.duration_seconds:
         _complete(result)
@@ -122,6 +142,7 @@ def build_report(
         "mission": snapshot.mission.model_dump(mode="json"),
         "success": success,
         "status": snapshot.status,
+        "recovery_mode": snapshot.recovery_mode,
         "elapsed_time_seconds": snapshot.elapsed_time_seconds,
         "final_metrics": dict(snapshot.metrics),
         "objective_results": [result.model_dump(mode="json") for result in snapshot.objective_results],

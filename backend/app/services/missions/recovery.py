@@ -171,6 +171,11 @@ def _objective_outlook(state, engine):
 def build_recovery_plan(state, engine) -> RecoveryPlan:
     steps = []
     working = state.model_copy(deep=True)
+    # Read-only previews show the same real recovery costs in either mode.
+    # Execution stays blocked in automatic mode at the API/engine boundary.
+    working.recovery_mode = "manual"
+    if working.engine_snapshot:
+        working.engine_snapshot["recovery_mode"] = "manual"
     for index, step in enumerate(_candidates(state), start=1):
         effects, cost, error = _preview(working, engine, step.command_type, step.payload)
         if error is None:

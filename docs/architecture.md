@@ -65,6 +65,14 @@ Running persisted states become paused on backend startup/shutdown with a system
 
 An OS lock prevents duplicate workers in a data directory. PostgreSQL advisory ownership additionally prevents separate data directories/processes from running the same database.
 
+## Automatic recovery
+
+The pure engine stores `recovery_mode` and a nullable pending simulated recovery deadline alongside its seeded incident cursors. Manual is the backward-compatible default. A recovery command is scheduled 10 simulated seconds after initial or newly detected damage. Tick merges incident and recovery boundaries in a stable order; it settles uptime/resources/objective evidence to each boundary before applying resource-checked commands. A pending attempt can repair multiple affected systems. Decisions and outcomes are independent of wall-clock speed and runner tick subdivision.
+
+The policy repairs power and communications incidents first, diagnoses equipment, then repairs residual baseline damage. Unaffordable targeted repairs may fall back to eligible backups; insufficient resources/capabilities produce recorded blocked events, never artificial objective success. Each automatic command is labeled in history/events and goes through the same immutable engine command path. Failed attempts do not repeatedly retry on every tick. All resulting snapshot, history, events and any final report persist atomically before broadcast through the existing controller transaction.
+
+`set_recovery_mode` uses the serialized, idempotent command API. Switching to Manual cancels pending work; paused/created states do not advance it. Restart preserves the mode and deadline while requiring explicit resume. Reset preserves the mode and guided profile. Guided demos bypass incident auto-pauses only in Automatic mode, so the normal engine can process automatic recovery without operator clicks; explicit Pause remains authoritative.
+
 ## WebSockets
 
 Failed tick persistence suspends advancement and retries persisting a paused state; it never publishes uncommitted telemetry. Cancellation waits for threaded transactions to finish before releasing the controller lock, then publishes committed transitions even if the HTTP caller disconnected.

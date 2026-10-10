@@ -24,6 +24,8 @@ export const stateSchema = z
     elapsed_time_seconds: nonnegative,
     random_seed: finite.int(),
     time_multiplier: finite.positive().max(3600),
+    recovery_mode: z.enum(['manual', 'automatic']).default('manual'),
+    next_recovery_at_seconds: nonnegative.nullable().optional(),
     sequence: finite.int().nonnegative(),
     metrics: z.record(finite),
     systems: z.object({
@@ -81,6 +83,7 @@ export const stateSchema = z
       .array(
         z.object({
           command_type: z.string(),
+          source: z.enum(['manual', 'automatic']).optional(),
           payload: z.record(z.unknown()),
           simulated_time_seconds: nonnegative,
           elapsed_time_seconds: nonnegative.optional(),

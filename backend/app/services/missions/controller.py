@@ -36,7 +36,8 @@ class Controller:
         Returns (seconds, hit_boundary). Boundaries are read from the private
         native snapshot so they cannot be skipped even at high speed.
         """
-        if state.run_profile != "guided_demo" or state.status != "running" or seconds <= 0:
+        if (state.run_profile != "guided_demo" or state.recovery_mode == "automatic"
+                or state.status != "running" or seconds <= 0):
             return seconds, False
         boundaries = (state.engine_snapshot or {}).get("next_incident_at") or {}
         elapsed = state.elapsed_time_seconds
@@ -72,7 +73,7 @@ class Controller:
             raise MissingError("Simulation not found")
         return state
 
-    async def create(self, mission_id, seed, speed=None):
+    async def create(self, mission_id, seed, speed=None, recovery_mode="manual"):
         self.require_engine()
         async with self.lock:
             if await self._store("active_run"):
@@ -84,7 +85,9 @@ class Controller:
                 speed = (await self._store("settings")).get(
                     "simulation_speed", self.store.db.settings.simulation_time_multiplier
                 )
-            state = self.engine.create_state(mission, random_seed=seed, time_multiplier=speed)
+            state = self.engine.create_state(
+                mission, random_seed=seed, time_multiplier=speed, recovery_mode=recovery_mode
+            )
             await self._commit(state)
             return state
 
@@ -204,6 +207,7 @@ class Controller:
                     "simulation_speed", self.store.db.settings.simulation_time_multiplier
                 ),
                 run_profile=old.run_profile,
+                recovery_mode=old.recovery_mode,
             )
             await self._store("persist_reset", old, state, key)
             self.hub.publish(state)

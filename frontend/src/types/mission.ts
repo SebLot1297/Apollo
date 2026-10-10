@@ -103,6 +103,7 @@ export interface PublicSystems {
 }
 export interface CommandRecord {
   command_type: string
+  source?: 'manual' | 'automatic'
   payload: Record<string, unknown>
   simulated_time_seconds: number
   elapsed_time_seconds?: number
@@ -110,6 +111,7 @@ export interface CommandRecord {
   effect?: string
 }
 export type RunProfile = 'standard' | 'guided_demo'
+export type RecoveryMode = 'manual' | 'automatic'
 export interface RecoveryStep {
   id: string
   title: string
@@ -148,6 +150,8 @@ export interface MissionState {
   mission: MissionConfiguration
   status: RunStatus
   run_profile?: RunProfile
+  recovery_mode?: RecoveryMode
+  next_recovery_at_seconds?: number | null
   elapsed_time_seconds: number
   random_seed: number
   time_multiplier: number
@@ -246,6 +250,7 @@ export type CommandType =
   | 'pause'
   | 'resume'
   | 'set_speed'
+  | 'set_recovery_mode'
   | 'trigger_incident'
   | 'activate_backup_communications'
   | 'activate_backup_power'

@@ -164,6 +164,8 @@ are serialized, so a resumed run follows the same future rules.
 
 ## Commands, resources, and recovery episodes
 
+Automatic mode executes the same recovery commands at deterministic simulated-time boundaries, respecting costs and capabilities. Manual commands are disabled while Automatic is enabled. Automatic actions are labeled in command history; they cannot bypass objective evaluation or repair after the terminal endpoint.
+
 All accepted commands append a command record and command event, including
 documented no-ops. They refresh metrics and historical objective evidence.
 Unsupported names/payload fields, unavailable capabilities, insufficient
@@ -175,6 +177,7 @@ Rejected commands leave input state intact.
 | start                          | created -> running; no clock advance                                                                                                                                                             |
 | pause                          | running -> paused                                                                                                                                                                                |
 | resume                         | paused -> running                                                                                                                                                                                |
+| set_recovery_mode              | Selects `manual` or `automatic` for created/running/paused runs; Manual cancels pending automatic recovery.                                                                                      |
 | trigger_incident               | Required `kind`; one supported synthetic incident                                                                                                                                                |
 | activate_backup_communications | Costs 2 resource units; effective communication health floor 85                                                                                                                                  |
 | activate_backup_power          | Requires backup_power_enabled; costs 3 resources; effective power health floor 90                                                                                                                |

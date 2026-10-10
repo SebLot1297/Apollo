@@ -12,10 +12,15 @@ class CreateRun(RequestModel):
     mission_id: UUID
     random_seed: Annotated[StrictInt, Field(ge=-2147483648, le=2147483647)] = 42
     time_multiplier: Annotated[float, Field(strict=True, gt=0, le=3600)] | None = None
+    recovery_mode: Literal["manual", "automatic"] = "manual"
 
 
 class SpeedPayload(RequestModel):
     time_multiplier: Annotated[float, Field(strict=True, gt=0, le=3600)]
+
+
+class RecoveryModePayload(RequestModel):
+    recovery_mode: Literal["manual", "automatic"]
 
 
 class Command(RequestModel):
@@ -24,6 +29,7 @@ class Command(RequestModel):
         "pause",
         "resume",
         "set_speed",
+        "set_recovery_mode",
         "trigger_incident",
         "activate_backup_communications",
         "activate_backup_power",
@@ -41,6 +47,8 @@ class Command(RequestModel):
     def validate_speed_payload(cls, payload, info: ValidationInfo):
         if info.data.get("command_type") == "set_speed":
             SpeedPayload.model_validate(payload)
+        elif info.data.get("command_type") == "set_recovery_mode":
+            RecoveryModePayload.model_validate(payload)
         return payload
 
 

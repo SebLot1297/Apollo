@@ -95,7 +95,9 @@ async def simulations(request: Request):
 
 @router.post("/simulations", status_code=201)
 async def create_run(body: CreateRun, request: Request):
-    return await request.app.state.controller.create(str(body.mission_id), body.random_seed, body.time_multiplier)
+    return await request.app.state.controller.create(
+        str(body.mission_id), body.random_seed, body.time_multiplier, body.recovery_mode
+    )
 
 
 @router.post("/simulations/demo", status_code=201)

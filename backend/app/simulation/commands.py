@@ -10,6 +10,7 @@ from .metrics import KIND_SYSTEM, refresh_systems, spend_resources
 COMMAND_PAYLOADS = {
     "start": set(), "pause": set(), "resume": set(), "finish": set(), "terminate": set(),
     "set_speed": {"time_multiplier"},
+    "set_recovery_mode": {"recovery_mode"},
     "trigger_incident": {"kind"}, "activate_backup_communications": set(),
     "activate_backup_power": set(), "run_equipment_diagnostic": set(),
     "restore_service": {"incident_id"}, "acknowledge_incident": {"incident_id"},
@@ -20,6 +21,7 @@ COMMAND_STATUSES = {
     "start": {"created"}, "pause": {"running"}, "resume": {"paused"},
     "finish": {"running", "paused"}, "terminate": {"created", "running", "paused"},
     "set_speed": {"created", "running", "paused"},
+    "set_recovery_mode": {"created", "running", "paused"},
     "acknowledge_incident": {"running", "paused"},
     "activate_backup_communications": {"running", "paused"},
     "activate_backup_power": {"running", "paused"},
@@ -28,7 +30,13 @@ COMMAND_STATUSES = {
 }
 
 
-def validate_command(state, command_type, payload):
+RECOVERY_COMMANDS = {
+    "acknowledge_incident", "activate_backup_communications", "activate_backup_power",
+    "run_equipment_diagnostic", "restore_service",
+}
+
+
+def validate_command(state, command_type, payload, *, automatic=False):
     if not isinstance(command_type, str) or command_type not in COMMAND_PAYLOADS:
         raise ValueError(f"unsupported command: {command_type}")
     if payload is not None and not isinstance(payload, dict):
@@ -40,6 +48,10 @@ def validate_command(state, command_type, payload):
     allowed = COMMAND_STATUSES.get(command_type, {"running"})
     if state.status not in allowed:
         raise ValueError(f"{command_type} is illegal while run is {state.status}; expected {sorted(allowed)}")
+    if state.recovery_mode == "automatic" and command_type in RECOVERY_COMMANDS and not automatic:
+        raise ValueError("Switch to Manual recovery before issuing manual recovery commands")
+    if command_type == "set_recovery_mode" and payload.get("recovery_mode") not in ("manual", "automatic"):
+        raise ValueError("recovery_mode must be manual or automatic")
     if command_type == "trigger_incident":
         kind = payload.get("kind")
         if not isinstance(kind, str) or kind not in INCIDENT_DEFINITIONS:
@@ -96,7 +108,7 @@ def _restore(state, incident_id=None, *, equipment_only=False):
     return f"Repaired {', '.join(sorted(systems))}; resolved {len(selected)} incident(s); spent {cost:g} resources"
 
 
-def execute(state, command_type, payload):
+def execute(state, command_type, payload, *, source="manual"):
     """Mutate only the engine's private state copy. Validation precedes execution."""
     if command_type in ("start", "pause", "resume"):
         state.status = {"start": "running", "pause": "paused", "resume": "running"}[command_type]
@@ -105,6 +117,11 @@ def execute(state, command_type, payload):
         previous = state.time_multiplier
         state.time_multiplier = payload["time_multiplier"]
         effect = f"Simulation speed changed from {previous:g}x to {state.time_multiplier:g}x"
+    elif command_type == "set_recovery_mode":
+        state.recovery_mode = payload["recovery_mode"]
+        if state.recovery_mode == "manual":
+            state.next_recovery_at_seconds = None
+        effect = f"Recovery mode changed to {state.recovery_mode}"
     elif command_type == "finish":
         # The engine finalizes objective evidence before selecting completed/failed.
         effect = "Finished at the actual elapsed time without advancing the clock"
@@ -139,6 +156,8 @@ def execute(state, command_type, payload):
         effect = _restore(state, equipment_only=True)
     else:  # restore_service, the only remaining whitelisted command
         effect = _restore(state, payload.get("incident_id"))
-    state.command_history.append(CommandRecord(command_type=command_type, payload=payload.copy(),
+    state.command_history.append(CommandRecord(command_type=command_type, source=source, payload=payload.copy(),
         elapsed_time_seconds=state.elapsed_time_seconds, timestamp=timestamp(state), effect=effect))
-    emit(state, "command", f"{command_type}: {effect}", {"command_type": command_type, "payload": payload.copy()})
+    prefix = "Automatic recovery: " if source == "automatic" else ""
+    emit(state, "command", f"{prefix}{command_type}: {effect}",
+         {"command_type": command_type, "payload": payload.copy(), "source": source})

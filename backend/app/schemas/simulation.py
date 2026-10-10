@@ -4,8 +4,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, Field
 
-from .mission import (DomainModel, Facility, MissionConfiguration, MissionObjective,
-                      Nonnegative, Percentage, SupportTeam)
+from .mission import DomainModel, Facility, MissionConfiguration, MissionObjective, Nonnegative, Percentage, SupportTeam
 
 RunStatus = Literal["created", "running", "paused", "completed", "failed", "terminated"]
 IncidentKind = Literal["communications_outage", "power_failure", "equipment_degradation"]
@@ -65,6 +64,7 @@ class HistorySample(DomainModel):
 
 class CommandRecord(DomainModel):
     command_type: str
+    source: Literal["manual", "automatic"] = "manual"
     payload: dict
     elapsed_time_seconds: Nonnegative
     timestamp: AwareDatetime
@@ -76,6 +76,8 @@ class MissionState(DomainModel):
     mission_id: UUID
     mission: MissionConfiguration
     status: RunStatus = "created"
+    recovery_mode: Literal["manual", "automatic"] = "manual"
+    next_recovery_at_seconds: Nonnegative | None = None
     elapsed_time_seconds: Nonnegative = 0
     random_seed: Annotated[int, Field(strict=True)] = 42
     time_multiplier: Annotated[float, Field(strict=True, gt=0, allow_inf_nan=False)] = 30
