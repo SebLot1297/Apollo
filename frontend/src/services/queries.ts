@@ -1,5 +1,5 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query'
-import type { MissionState } from '../types/mission'
+import type { MissionConfiguration, MissionState } from '../types/mission'
 import { isTerminal } from '../types/mission'
 import { api } from './api'
 import { acceptState, parseState } from './state'
@@ -69,6 +69,26 @@ export const invalidateMission = (client: QueryClient, missionId: string) =>
     client.invalidateQueries({ queryKey: keys.mission(missionId) }),
     client.invalidateQueries({ queryKey: keys.objectives(missionId) }),
   ])
+export async function cacheMission(
+  client: QueryClient,
+  mission: MissionConfiguration,
+) {
+  // A read started before Save must not replace the confirmed write response.
+  await Promise.all([
+    client.cancelQueries({ queryKey: keys.missions }),
+    client.cancelQueries({ queryKey: keys.mission(mission.id) }),
+    client.cancelQueries({ queryKey: keys.objectives(mission.id) }),
+  ])
+  client.setQueryData(keys.mission(mission.id), mission)
+  client.setQueryData(keys.objectives(mission.id), mission.objectives)
+  client.setQueryData<MissionConfiguration[]>(
+    keys.missions,
+    (current) =>
+      current && [mission, ...current.filter((item) => item.id !== mission.id)],
+  )
+  // Library refresh is independent of whether the write succeeded.
+  void client.invalidateQueries({ queryKey: keys.missions })
+}
 export function runOptions(runId: string, client: QueryClient) {
   return {
     queryKey: keys.run(runId),

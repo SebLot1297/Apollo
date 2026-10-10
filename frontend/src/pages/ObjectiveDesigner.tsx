@@ -5,7 +5,7 @@ import { Empty, ErrorNotice, Loading } from '../components/ui/Feedback'
 import MissionForm from '../components/missions/MissionForm'
 import { api } from '../services/api'
 import {
-  invalidateMission,
+  cacheMission,
   useMission,
   useMissions,
   useObjectives,
@@ -43,7 +43,7 @@ export default function ObjectiveDesigner() {
     else if (deleted.length) await api.deleteObjective(deleted[0].id)
     else await api.updateObjective(changed[0])
     const saved = await api.mission(missionId)
-    await invalidateMission(client, missionId)
+    await cacheMission(client, saved)
     return saved
   }
   return (
