@@ -130,6 +130,21 @@ async def test_transient_retry_then_alternate():
     assert len(gemini.calls) == 2 and len(qwen.calls) == 1
 
 
+async def test_only_configured_provider_gets_full_live_deadline():
+    class SlowProvider(FakeProvider):
+        async def generate_text(self, system, prompt, max_tokens):
+            await asyncio.sleep(0.25)
+            return await super().generate_text(system, prompt, max_tokens)
+
+    gemini = SlowProvider("gemini")
+    ai = service(gemini, ai_timeout_seconds=1)
+    result = await ai.execute("generate_report", "Explain recorded metrics", provider="gemini")
+    assert result["provider"] == "gemini"
+    assert result["mock"] is False
+    assert result["fallback_reason"] is None
+    await ai.aclose()
+
+
 async def test_cached_health_and_cleanup():
     gemini, qwen = FakeProvider("gemini"), FakeProvider("qwen")
     ai = service(gemini, qwen)
@@ -142,6 +157,57 @@ async def test_cached_health_and_cleanup():
     assert gemini.closed and qwen.closed
     with pytest.raises(UnavailableError, match="closed"):
         await ai.execute("chat", "hi")
+
+
+async def test_failed_health_recovers_without_waiting_for_success_cache(monkeypatch):
+    clock = [100.0]
+    monkeypatch.setattr("app.services.ai.service.monotonic", lambda: clock[0])
+
+    class RecoveringProvider(FakeProvider):
+        async def health_check(self):
+            self.health_calls += 1
+            if self.health_calls == 1:
+                raise ProviderError("timeout", retryable=True)
+            return True
+
+    gemini = RecoveringProvider("gemini")
+    ai = service(gemini, ai_health_cache_seconds=60)
+    assert (await ai.status())[0]["available"] is False
+    clock[0] += 1
+    assert (await ai.status())[0]["available"] is False
+    assert gemini.health_calls == 1
+    clock[0] += 5
+    assert (await ai.status())[0]["available"] is True
+    assert gemini.health_calls == 2
+    clock[0] += 6
+    assert (await ai.status())[0]["available"] is True
+    assert gemini.health_calls == 2
+    await ai.aclose()
+
+
+@pytest.mark.parametrize("code", ["timeout", "authentication_failed", "model_or_endpoint_not_found"])
+async def test_health_status_reports_safe_provider_error_codes(code):
+    class BrokenProvider(FakeProvider):
+        async def health_check(self):
+            raise ProviderError(code)
+
+    ai = service(BrokenProvider("gemini"))
+    status = (await ai.status())[0]
+    assert status["available"] is False
+    assert code in status["detail"]
+    await ai.aclose()
+
+
+async def test_health_status_does_not_expose_arbitrary_exceptions():
+    class BrokenProvider(FakeProvider):
+        async def health_check(self):
+            raise RuntimeError("private-secret")
+
+    ai = service(BrokenProvider("gemini"))
+    status = (await ai.status())[0]
+    assert "provider_request_failed" in status["detail"]
+    assert "private-secret" not in json.dumps(status)
+    await ai.aclose()
 
 
 def test_context_is_bounded_and_input_unchanged():

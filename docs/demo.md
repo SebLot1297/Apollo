@@ -1,5 +1,24 @@
 # CommandGrid demonstration and validation
 
+## Guided Hackathon Recovery Demo
+
+A repeatable 3–5 minute operator-led demo: healthy systems → seeded incidents → guided recovery → successful report. Launch it from the dashboard **Launch guided demo** button (or `POST /api/v1/simulations/demo`). It creates a stopped run from the canonical _Hackathon Recovery Demo_ snapshot using the saved **Default simulation speed**, with seed **13337** and profile `guided_demo`.
+
+The seed places exactly three incidents in the 900 simulated-second window: **communications outage ≈230s**, **equipment degradation ≈488s**, **power failure ≈594s**. On a guided run the runner pauses precisely at each incident boundary so recovery can happen while paused without costing uptime.
+
+Presenter checklist:
+
+1. Dashboard → **Launch guided demo**. Confirm the **Guided demo** badge.
+2. **Start simulation**, then set speed with the **1×/5×/10×/30×/60×/120×** presets. Speed is server-confirmed and shown with estimated wall time remaining.
+3. At each auto-pause, open the **Recovery plan** panel and click **Execute action** for the recommended steps (backup communications/power, acknowledge, restore/diagnose). Paused recovery consumes resources and improves systems without advancing time.
+4. Optionally click **Generate AI strategy** for a Gemini (or labeled deterministic) explanation. It never changes numeric outcomes and is marked outdated after further actions.
+5. Finish the full 900-second window; the **Objective outlook** offers **Finish successfully** only when required objectives actually pass.
+6. Open the report to show success, final metrics, and evidence. Replay with **Reset to new run** (preserves the canonical mission and seed, and uses the current saved default speed).
+
+Ignoring recovery produces degraded systems, unresolved incidents, and an unsuccessful report — outcomes always come from real commands, resources, and objective evaluation.
+
+The recovery plan is read-only: generating it previews commands on copied engine snapshots and never writes to the run. Without Gemini configured, guidance and all recovery controls still work; the AI button reports the deterministic fallback.
+
 ## Current verified Part A demo
 
 1. Follow README setup. Use TimescaleDB, not the optional SQLite convenience mode, for persistence acceptance.

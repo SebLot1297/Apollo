@@ -4,7 +4,7 @@ Open <http://127.0.0.1:5173>. Use a new test mission so your existing configurat
 
 ## 1. Prepare a predictable mission
 
-In **Settings**, set **Future-run simulation speed** to **1**, save, then reload. The value should remain 1. This affects the next launch only.
+In **Settings**, set **Default simulation speed** to **1**, save, then reload. The value should remain 1. Saving also updates the current unfinished run and sets the default for future launches and resets across all missions.
 
 Go to **Mission Builder** and use these values:
 
@@ -30,11 +30,11 @@ Review and Save. A confirmed save returns you to the top of the Dashboard and di
 
 The success popup appears only after the backend confirms the save, can be closed with **Dismiss notification**, and disappears automatically after eight seconds. Failed saves retain your draft in the editor without showing success or redirecting. If validation fails, **Mission was not saved** appears with field errors; no mission write is sent. When shortening the template to 600 seconds, remove its 21600-second deadline objective as above, or change that deadline to at most 600. While Save is pending, draft controls are disabled.
 
-The dashboard shows **Open active run** only on the mission that owns that run. Other mission cards show a disabled **Launch** and identify the mission to finish or terminate first. Saved configurations become simulations in Mission Control only after launch. A run keeps the configuration and speed captured at launch; changing the source mission or saved speed does not change an older run.
+The dashboard shows **Open active run** only on the mission that owns that run. Other mission cards show a disabled **Launch** and identify the mission to finish or terminate first. Saved configurations become simulations in Mission Control only after launch. A run keeps the mission configuration captured at launch. Saving the default speed updates the current unfinished run; completed reports retain their original evidence.
 
 ## 2. Run the success flow
 
-Before clicking **Launch** on your mission card, set **Simulation speed (×)** to the speed you want for that run. Use **1** for this checklist. Fractional speeds are supported; the value must be greater than 0 and at most 3600. **Use saved default** clears your launch override. A choice applies to that run and does not change Settings. Mission Control displays the captured speed after launch.
+Before clicking **Launch** on your mission card, set **Simulation speed (×)** to the speed you want for that run. Use **1** for this checklist. Fractional speeds are supported; the value must be greater than 0 and at most 3600. **Use saved default** clears your launch override. A choice applies to that run and does not change Settings. Mission Control displays the current speed after launch. In its **Command console**, change **Run speed (×)** and choose **Apply speed**, or click a preset. This changes only the selected run and works before starting, while running, or while paused.
 
 | Action                                  | Expected result                                                                                                                        |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -50,6 +50,14 @@ Before clicking **Launch** on your mission card, set **Simulation speed (×)** t
 | Reload report                           | The result, objective evidence, commands, events and telemetry remain available.                                                       |
 
 Use **Restore selected incident** for this test. Equipment diagnostics or restoring all impaired services can improve equipment and change the optional outcome.
+
+### Verify the shared speed preference
+
+1. Pause the run. In **Settings**, change **Default simulation speed** to **4** and **Save preferences**. Reload Settings: the value should remain 4.
+2. Return to the run. Its speed should be 4× and its status should remain paused, with unchanged elapsed time.
+3. In **Command console**, enter **2** in **Run speed (×)** and click **Apply speed**. The run should show 2×; Settings should still show 4.
+4. Terminate the test run. Reset it or launch a different mission using **Use saved default**: the new run should use 4×.
+5. A zero, negative, blank or greater-than-3600 run speed should show an error without changing the run. A failed save should retain the draft and display an error.
 
 ## 3. Check objective replacement and validation
 

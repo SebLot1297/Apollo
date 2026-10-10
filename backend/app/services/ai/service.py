@@ -52,6 +52,7 @@ class AIService:
         self._health_lock = asyncio.Lock()
         self._health = None
         self._health_at = 0.0
+        self._health_cache_seconds = self.config.ai_health_cache_seconds
         self._closed = False
 
     def _configured(self, name):
@@ -127,7 +128,8 @@ class AIService:
                         continue
                     adapter = self.providers[name]
                     remaining = live_deadline - monotonic()
-                    provider_deadline = monotonic() + max(0, remaining / (len(names) - index))
+                    remaining_providers = sum(self._configured(candidate) for candidate in names[index:])
+                    provider_deadline = monotonic() + max(0, remaining / remaining_providers)
                     for attempt in range(2):
                         timeout = (provider_deadline - monotonic()) / (2 - attempt)
                         if timeout <= 0:
@@ -203,7 +205,7 @@ class AIService:
             raise UnavailableError("AI service is closed")
         async with self._health_lock:
             now = monotonic()
-            if self._health is not None and now - self._health_at < self.config.ai_health_cache_seconds:
+            if self._health is not None and now - self._health_at < self._health_cache_seconds:
                 return [dict(item) for item in self._health]
 
             async def check(name):
@@ -226,8 +228,13 @@ class AIService:
                             if available
                             else "Model metadata unavailable; inference unverified"
                         )
+                    except TimeoutError:
+                        detail = "Health probe failed: timeout; inference unverified"
+                    except ProviderError as exc:
+                        code = exc.code if exc.code in SAFE_CODES else "provider_request_failed"
+                        detail = f"Health probe failed: {code}; inference unverified"
                     except Exception:
-                        detail = "Health probe failed; inference unverified"
+                        detail = "Health probe failed: provider_request_failed; inference unverified"
                 return {
                     "provider": name,
                     "model": model,
@@ -245,6 +252,14 @@ class AIService:
                     "available": self.config.enable_ai,
                     "detail": "Deterministic local templates; no inference" if self.config.enable_ai else "AI disabled",
                 }
+            )
+            # A transient metadata failure must not disable the UI for a full
+            # successful-health cache period. Still coalesce concurrent probes.
+            failed_probe = self.config.enable_ai and any(
+                item["configured"] and not item["available"] for item in statuses[:2]
+            )
+            self._health_cache_seconds = (
+                min(5, self.config.ai_health_cache_seconds) if failed_probe else self.config.ai_health_cache_seconds
             )
             self._health, self._health_at = statuses, monotonic()
             return [dict(item) for item in statuses]
