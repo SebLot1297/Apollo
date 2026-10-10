@@ -2,7 +2,8 @@
 
 The demo is a fixed mission + seed so a presenter can rehearse the same incident
 timeline every time. Outcomes still come from the real engine: only the mission
-snapshot, seed and starting speed are prescribed, never the result.
+snapshot and seed are prescribed, never the result. Starting speed uses the
+saved global preference, like every other mission.
 
 With these parameters and seed 13337 the seeded schedule places the three
 incidents at roughly:
@@ -18,7 +19,6 @@ from app.schemas.mission import MissionConfiguration, MissionObjective, MissionP
 # Fixed identity so the seeded mission is inserted (never overwritten) once.
 GUIDED_DEMO_MISSION_ID = UUID("d3e0f00d-1337-5eed-9000-c0ffee000001")
 GUIDED_DEMO_SEED = 13337
-GUIDED_DEMO_SPEED = 5
 GUIDED_DEMO_DURATION = 900
 
 

@@ -51,7 +51,11 @@ Accepted command handling holds an asyncio controller lock:
 
 A nullable unique active_slot allows one created/running/paused run; terminal runs clear the slot. Commands also have a unique run/idempotency key constraint.
 
-Reset is a single transaction creating a new run, recording reset on the old run and preserving previous reports. Retrying the reset key resolves to the same created run.
+Reset is a single transaction creating a new run with the current saved default speed, recording reset on the old run and preserving previous reports and run profiles. Retrying the reset key resolves to the same created run.
+
+Settings saves share the controller lock with commands, ticks, launches and resets. A speed save settles running wall time at the old multiplier, applies the validated `set_speed` command to the unfinished run, and writes preferences, the run snapshot, appended telemetry/events and any terminal report in one transaction. Only after commit are in-memory preferences updated and the snapshot broadcast. Failed transactions leave the previous preferences and run intact; cancellation waits for commit/rollback before releasing the lock. Per-run commands do not change the shared default. New launches read the persisted default under the same lock, preventing stale values when a preference save is queued.
+
+Guided demos use the same default and per-run speed controls. Settling time preserves their incident-boundary clamping and automatic pauses, including when a speed save arrives between runner ticks.
 
 ## Runner and recovery
 

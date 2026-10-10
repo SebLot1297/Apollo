@@ -15,13 +15,14 @@ class TestEngine:
     __test__ = False
 
     @staticmethod
-    def create_state(mission, random_seed=42, run_id=None, time_multiplier=30):
+    def create_state(mission, random_seed=42, run_id=None, time_multiplier=30, run_profile="standard"):
         return MissionState(
             run_id=run_id or uuid4(),
             mission_id=mission.id,
             mission=mission,
             random_seed=random_seed,
             time_multiplier=time_multiplier,
+            run_profile=run_profile,
         )
 
     @staticmethod

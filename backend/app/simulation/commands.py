@@ -2,6 +2,7 @@
 from uuid import UUID
 
 from app.schemas.simulation import CommandRecord
+
 from .clock import finite_number, timestamp
 from .incidents import INCIDENT_DEFINITIONS, add_incident, emit, resolve_incident
 from .metrics import KIND_SYSTEM, refresh_systems, spend_resources

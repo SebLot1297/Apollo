@@ -158,6 +158,8 @@ function PreferencesForm({ initial }: { initial: SettingsData }) {
         })
         setSaved(true)
         void client.invalidateQueries({ queryKey: keys.providers })
+        void client.invalidateQueries({ queryKey: keys.runs })
+        void client.invalidateQueries({ queryKey: ['run'] })
       } catch (failure) {
         setError(failure)
       } finally {
@@ -195,7 +197,7 @@ function PreferencesForm({ initial }: { initial: SettingsData }) {
         Demo mode
       </label>
       <label className="cg-field">
-        <span>Future-run simulation speed</span>
+        <span>Default simulation speed</span>
         <input
           type="number"
           step="any"
@@ -204,8 +206,10 @@ function PreferencesForm({ initial }: { initial: SettingsData }) {
           aria-invalid={Boolean(form.formState.errors.simulation_speed)}
         />
         <small>
-          Finite speed greater than 0 and at most 3600. Affects future launches;
-          existing runs retain their speed.
+          Saved for all missions. Updates the current unfinished simulation and
+          provides the default for future launches and resets. Choose a speed
+          greater than 0 and at most 3600. Individual runs can also be adjusted
+          in Mission Control.
         </small>
         {form.formState.errors.simulation_speed && (
           <span className="cg-field-error" role="alert">

@@ -128,8 +128,9 @@ export default function MissionControl() {
                 {elapsed(state.elapsed_time_seconds)}
               </span>
               <p className="cg-help">
-                This run uses the mission configuration and speed captured at
-                launch. Saved changes apply to future launches.
+                This run keeps its mission configuration from launch. Change its
+                speed in the Command console below, or save a default for all
+                missions in Settings.
               </p>
             </section>
             <div className="cg-systems">

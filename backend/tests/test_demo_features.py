@@ -2,7 +2,6 @@
 
 These exercise the shipped Part B engine through the real API/storage boundary.
 """
-import asyncio
 from uuid import uuid4
 
 import pytest
@@ -62,10 +61,10 @@ def test_set_speed_validation_and_paused_recovery(tmp_path):
         # Allowed while paused and returns server-confirmed speed.
         assert command(client, run_id, "set_speed", {"time_multiplier": 60}).json()["time_multiplier"] == 60
         # Reject booleans, zero, and beyond the bound.
-        assert command(client, run_id, "set_speed", {"time_multiplier": True}).status_code == 409
-        assert command(client, run_id, "set_speed", {"time_multiplier": 0}).status_code == 409
-        assert command(client, run_id, "set_speed", {"time_multiplier": 4000}).status_code == 409
-        assert command(client, run_id, "set_speed", {}).status_code == 409
+        assert command(client, run_id, "set_speed", {"time_multiplier": True}).status_code == 422
+        assert command(client, run_id, "set_speed", {"time_multiplier": 0}).status_code == 422
+        assert command(client, run_id, "set_speed", {"time_multiplier": 4000}).status_code == 422
+        assert command(client, run_id, "set_speed", {}).status_code == 422
         assert command(client, run_id, "set_speed", {"time_multiplier": 30}).status_code == 200
         # Synthetic incident injection is running-only, so it is rejected while paused.
         assert command(client, run_id, "trigger_incident", {"kind": "power_failure"}).status_code == 409
@@ -157,7 +156,7 @@ def test_guided_demo_pauses_at_boundaries_and_can_succeed(tmp_path):
         run_id = state["run_id"]
         assert state["run_profile"] == "guided_demo"
         assert state["random_seed"] == 13337
-        assert state["time_multiplier"] == 5
+        assert state["time_multiplier"] == client.get("/api/v1/settings").json()["simulation_speed"]
         assert state["status"] == "created"
         assert client.post("/api/v1/simulations/demo").status_code == 409  # one active run
         command(client, run_id, "start")
@@ -196,7 +195,7 @@ def test_guided_demo_pauses_at_boundaries_and_can_succeed(tmp_path):
         assert report["success"] is True
         reset = client.post(f"/api/v1/simulations/{run_id}/reset", json={"idempotency_key": str(uuid4())}).json()
         assert reset["run_profile"] == "guided_demo"
-        assert reset["time_multiplier"] == 5
+        assert reset["time_multiplier"] == client.get("/api/v1/settings").json()["simulation_speed"]
         assert reset["random_seed"] == 13337
 
 

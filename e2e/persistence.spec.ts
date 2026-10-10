@@ -16,7 +16,7 @@ test('preferences refresh cached values and persist a subsequent save', async ({
 }) => {
   await page.goto('/settings')
   const speed = page.getByRole('spinbutton', {
-    name: /Future-run simulation speed/,
+    name: /Default simulation speed/,
   })
   await expect(speed).toHaveValue('1')
   await page
@@ -47,7 +47,7 @@ test('a delayed preference refresh preserves edits made while it was loading', a
 }) => {
   await page.goto('/settings')
   const speed = page.getByRole('spinbutton', {
-    name: /Future-run simulation speed/,
+    name: /Default simulation speed/,
   })
   await expect(speed).toHaveValue('1')
   await page
@@ -122,7 +122,7 @@ test('speed one and a new UI-built mission save visibly and launch with all subm
   await request.put('/api/v1/settings', { data: { simulation_speed: 1000 } })
   await page.goto('/settings')
   await page
-    .getByRole('spinbutton', { name: /Future-run simulation speed/ })
+    .getByRole('spinbutton', { name: /Default simulation speed/ })
     .fill('1')
   await page.getByRole('button', { name: 'Save preferences' }).click()
   await expect(page.getByText('Preferences saved to the server.')).toBeVisible()
@@ -225,7 +225,7 @@ test('preferences cannot change underneath a pending save and the next edit clea
 }) => {
   await page.goto('/settings')
   const speed = page.getByRole('spinbutton', {
-    name: /Future-run simulation speed/,
+    name: /Default simulation speed/,
   })
   await speed.fill('20')
   let release!: () => void

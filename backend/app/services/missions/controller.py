@@ -7,7 +7,6 @@ from app.core.errors import ConflictError, MissingError, UnavailableError
 from app.repositories.store import TERMINAL
 from app.services.missions.demo import (
     GUIDED_DEMO_SEED,
-    GUIDED_DEMO_SPEED,
     guided_demo_mission,
 )
 from app.services.missions.state import Event
@@ -73,7 +72,7 @@ class Controller:
             raise MissingError("Simulation not found")
         return state
 
-    async def create(self, mission_id, seed, speed):
+    async def create(self, mission_id, seed, speed=None):
         self.require_engine()
         async with self.lock:
             if await self._store("active_run"):
@@ -81,9 +80,46 @@ class Controller:
             mission = await self._store("get_mission", mission_id)
             if mission is None:
                 raise MissingError("Mission not found")
+            if speed is None:
+                speed = (await self._store("settings")).get(
+                    "simulation_speed", self.store.db.settings.simulation_time_multiplier
+                )
             state = self.engine.create_state(mission, random_seed=seed, time_multiplier=speed)
             await self._commit(state)
             return state
+
+    async def update_preferences(self, preferences, changes):
+        """Persist the global default and active run together, under the runner lock."""
+        async with self.lock:
+            value = {**preferences, **changes}
+            state = report = None
+            current = self.clock()
+            if "simulation_speed" in changes:
+                state = await self._store("active_run")
+                if state is not None:
+                    self.require_engine()
+                    if self.clock_running and state.status == "running" and current > self.last_tick:
+                        state = self._guided_tick(state, (current - self.last_tick) * state.time_multiplier)[0]
+                    if state.status not in TERMINAL and state.time_multiplier != value["simulation_speed"]:
+                        state = self.engine.apply_command(
+                            state, "set_speed", {"time_multiplier": value["simulation_speed"]}
+                        )
+                    if state.status in TERMINAL:
+                        report = self.engine.build_report(state)
+
+            def committed():
+                preferences.update(value)
+                if state is not None:
+                    self.last_tick = current
+                    self.hub.publish(state)
+
+            try:
+                await self._store("save_settings", value, state=state, report=report)
+            except asyncio.CancelledError:
+                committed()
+                raise
+            committed()
+            return value
 
     async def create_demo(self):
         """Create a stopped guided-demo run from the canonical mission snapshot."""
@@ -97,7 +133,9 @@ class Controller:
             state = self.engine.create_state(
                 mission,
                 random_seed=GUIDED_DEMO_SEED,
-                time_multiplier=GUIDED_DEMO_SPEED,
+                time_multiplier=(await self._store("settings")).get(
+                    "simulation_speed", self.store.db.settings.simulation_time_multiplier
+                ),
                 run_profile="guided_demo",
             )
             await self._commit(state)
@@ -159,15 +197,14 @@ class Controller:
                 raise ConflictError("Finish or terminate this run before resetting")
             if await self._store("active_run"):
                 raise ConflictError("Another active simulation already exists")
-            if old.run_profile == "guided_demo":
-                state = self.engine.create_state(
-                    old.mission, random_seed=old.random_seed, time_multiplier=GUIDED_DEMO_SPEED,
-                    run_profile="guided_demo",
-                )
-            else:
-                state = self.engine.create_state(
-                    old.mission, random_seed=old.random_seed, time_multiplier=old.time_multiplier
-                )
+            state = self.engine.create_state(
+                old.mission,
+                random_seed=old.random_seed,
+                time_multiplier=(await self._store("settings")).get(
+                    "simulation_speed", self.store.db.settings.simulation_time_multiplier
+                ),
+                run_profile=old.run_profile,
+            )
             await self._store("persist_reset", old, state, key)
             self.hub.publish(state)
             return state

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import type {
   CommandType,
@@ -35,14 +35,31 @@ export default function Commands({
     [error, setError] = useState<unknown>(null),
     [notice, setNotice] = useState('')
   const [kind, setKind] = useState<IncidentKind>('power_failure')
+  const [speedDraft, setSpeedDraft] = useState<{
+    runId: string
+    value: string
+  } | null>(null)
+  const speed =
+    speedDraft?.runId === state.run_id
+      ? speedDraft.value
+      : String(state.time_multiplier)
+  const multiplier = Number(speed)
+  const invalidSpeed =
+    !speed.trim() ||
+    !Number.isFinite(multiplier) ||
+    multiplier <= 0 ||
+    multiplier > 3600
   const submit = async (action: ActionRequest) => {
     setError(null)
     setNotice('')
     try {
       const accepted = await sendAction(client, action)
       setUncertain(null)
+      if (action.command_type === 'set_speed') setSpeedDraft(null)
       setNotice(
-        `${action.command_type.replaceAll('_', ' ')} confirmed by the server. ${accepted.command_history?.at(-1)?.effect ?? ''}`,
+        action.command_type === 'set_speed'
+          ? `Simulation speed updated to ${accepted.time_multiplier}×.`
+          : `${action.command_type.replaceAll('_', ' ')} confirmed by the server. ${accepted.command_history?.at(-1)?.effect ?? ''}`,
       )
       if (action.command_type === 'reset') {
         useWorkspace.getState().selectRun(accepted.run_id)
@@ -131,6 +148,79 @@ export default function Commands({
             </div>
           </div>
         )}
+        <form
+          className="cg-form"
+          noValidate
+          aria-label="Simulation speed control"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (blocked || isTerminal(state.status)) return
+            if (invalidSpeed) {
+              setError(
+                new Error(
+                  'Enter a simulation speed greater than 0 and at most 3600.',
+                ),
+              )
+              return
+            }
+            void act('set_speed', { time_multiplier: multiplier })
+          }}
+        >
+          <fieldset
+            className="cg-form"
+            disabled={blocked || isTerminal(state.status)}
+          >
+            <legend>Simulation speed</legend>
+            <label className="cg-field">
+              <span>Run speed (×)</span>
+              <input
+                type="number"
+                aria-label="Run speed (×)"
+                aria-invalid={invalidSpeed}
+                min="0"
+                max="3600"
+                step="any"
+                value={speed}
+                onChange={(event) =>
+                  setSpeedDraft({
+                    runId: state.run_id,
+                    value: event.target.value,
+                  })
+                }
+              />
+              <small>
+                Current speed: {state.time_multiplier}×. Change this run before
+                starting, while running, or while paused.
+              </small>
+            </label>
+            <div className="cg-actions" aria-label="Speed presets">
+              {[1, 5, 10, 30, 60, 120].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={`button${state.time_multiplier === preset ? ' primary' : ''}`}
+                  aria-pressed={state.time_multiplier === preset}
+                  disabled={state.time_multiplier === preset}
+                  onClick={() =>
+                    void act('set_speed', { time_multiplier: preset })
+                  }
+                >
+                  {preset}×
+                </button>
+              ))}
+            </div>
+            <button className="button primary" type="submit">
+              Apply speed
+            </button>
+          </fieldset>
+          <p className="cg-help">
+            This control changes only this run.{' '}
+            <Link to="/settings">
+              Save the default speed for all missions in Settings
+            </Link>
+            .
+          </p>
+        </form>
         <div className="cg-actions">
           {state.status === 'created' && (
             <button
@@ -195,22 +285,6 @@ export default function Commands({
             </>
           )}
         </div>
-        {['created', 'running', 'paused'].includes(state.status) && (
-          <div className="cg-actions" aria-label="Simulation speed">
-            <span className="cg-help">Speed {state.time_multiplier}×</span>
-            {[1, 5, 10, 30, 60, 120].map((preset) => (
-              <button
-                key={preset}
-                className={`button${state.time_multiplier === preset ? ' primary' : ''}`}
-                aria-pressed={state.time_multiplier === preset}
-                disabled={blocked || state.time_multiplier === preset}
-                onClick={() => void act('set_speed', { time_multiplier: preset })}
-              >
-                {preset}×
-              </button>
-            ))}
-          </div>
-        )}
         <fieldset
           disabled={blocked || state.status !== 'running'}
           className="cg-form"
@@ -243,9 +317,7 @@ export default function Commands({
           </div>
         </fieldset>
         <fieldset
-          disabled={
-            blocked || !['running', 'paused'].includes(state.status)
-          }
+          disabled={blocked || !['running', 'paused'].includes(state.status)}
           className="cg-form"
         >
           <legend className="cg-help">

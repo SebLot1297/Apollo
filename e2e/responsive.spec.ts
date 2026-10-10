@@ -119,7 +119,7 @@ test('confirmation dialog traps focus, Escape cancels, and restores focus to its
   await expect(dialog).not.toBeVisible()
   await expect(trigger).toBeFocused()
 })
-test('server preferences persist and speed applies only to future launches', async ({
+test('server preferences persist and the default updates the unfinished run', async ({
   page,
   request,
 }) => {
@@ -129,7 +129,7 @@ test('server preferences persist and speed applies only to future launches', asy
     ),
     old = await createRun(request, mission)
   await page.goto('/settings')
-  const speed = page.getByLabel('Future-run simulation speed', { exact: false })
+  const speed = page.getByLabel('Default simulation speed', { exact: false })
   await speed.fill('0')
   await page.getByRole('button', { name: 'Save preferences' }).click()
   await expect(speed).toHaveAttribute('aria-invalid', 'true')
@@ -141,7 +141,7 @@ test('server preferences persist and speed applies only to future launches', asy
   expect(
     (await (await request.get(`/api/v1/simulations/${old.run_id}`)).json())
       .time_multiplier,
-  ).toBe(1)
+  ).toBe(2)
   expect(
     (await (await request.get('/api/v1/settings')).json()).simulation_speed,
   ).toBe(2)
