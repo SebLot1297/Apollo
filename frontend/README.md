@@ -37,7 +37,7 @@ Mission/objective generation, incident explanation, chat and report narrative ca
 
 AI envelopes display provider, model, mock flag, fallback reason and latency. Mock responses visibly say DEMO/MOCK. Text is rendered as React text, never injected HTML. The assistant cannot execute suggested commands. Numerical evidence and `report.success` remain separate from narrative; narrative generation refetches persisted reports.
 
-**Successful frontend AI tests use labeled transport fixtures. Live Gemini/Qwen inference and frontend-driven backend mock persistence have not been verified by this browser configuration. Part D's backend tests cover its mock service and persistence separately.**
+**The standard browser suite uses labeled transport fixtures for successful AI responses. The separate mock-AI suite now verifies the real backend mock service, proposal saves, explanation/chat numerical isolation and persisted report narratives. Live Gemini/Qwen inference remains unverified.**
 
 ## Verification
 
@@ -48,6 +48,7 @@ npm run build
 npm run lint
 npm test
 npm run test:e2e
+npx playwright test --config e2e/mock-ai.config.ts
 git diff --check
 ```
 
@@ -63,7 +64,9 @@ Final verification on 2026-10-10:
 
 Objective editor regression: deleting all template objectives and then appending new ones originally crashed because field-array updates preceded watched values. Rows now match watched values by their objective UUID and use the field-array value during the transition. Two real-backend regression tests cover empty-to-new drafts, repeated middle-row replacement, saved objective POST/DELETE, preserved IDs and reload. The focused forms suite passed all seven tests in 22.5 seconds; build/lint and the complete 39-test browser suite passed. Backend source is unchanged; the backend result above is from the prior Part D integration verification.
 
-Screenshots were visually reviewed for desktop/mobile layout, readable telemetry axes, natural panel sizing and honest unavailable AI. Runtime and console-error checks passed for the desktop/390px real-data journeys. All 64 changed/added/removed files are inside the assigned frontend/test scope. The frontend lint configuration excludes generated `dist/` and Vite dependency caches so lint remains valid after builds/browser runs.
+Fresh application testing: `npm test` passed 125 tests and 194 subtests, with two PostgreSQL-only skips, in 19.51 seconds. `npm run test:e2e` passed all 39 tests in 2.5 minutes. The separate `npx playwright test --config e2e/mock-ai.config.ts` passed all three real mock-AI checks in 28.0 seconds. The application source was unchanged during this additional testing; build/lint results above remain from the verified objective fix. See [the hands-on checklist](TESTING.md) for repeatable manual journeys.
+
+Screenshots were visually reviewed for desktop/mobile layout, readable telemetry axes, natural panel sizing and honest unavailable AI. Runtime and console-error checks passed for the desktop/390px real-data journeys. The initial 64-file implementation and subsequent test additions remain inside the assigned frontend/test scope. The frontend lint configuration excludes generated `dist/` and Vite dependency caches so lint remains valid after builds/browser runs.
 
 For local review, run `npm run dev`, then open `http://127.0.0.1:5173`. The normal development store is separate from the disposable Playwright databases.
 
@@ -71,14 +74,15 @@ Setup uses the existing manifests: `npm ci`, `npm run setup` (uv and Python 3.12
 
 ### Real backend versus fixtures
 
-| Tests                                      | Evidence                                                                                                                                                                                                                                                                                   |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `commandgrid-flow.spec.ts`                 | Real API persistence, engine, runner, WebSockets, success with optional failure, required failure, pause freeze, early finish, termination/reset, natural completion, active/delete/resource conflicts, launch race, historical snapshots and report comparison. No engine/state fixtures. |
-| `forms.spec.ts`                            | Real mission/objective writes, reload, scalar metadata, team regeneration (including repeated edits), identity preservation and atomic required swap. One targeted 422 fixture verifies field errors/draft retention.                                                                      |
-| `foundation.spec.ts`, `responsive.spec.ts` | Actual backend navigation, desktop/390px layouts, real map keyboard selection, no horizontal overflow or runtime errors, chart table alternatives, dialog focus/Escape/restore and persisted future-speed settings.                                                                        |
-| `transport.spec.ts`                        | Actual server state seeds plus targeted delayed REST/WS/command/error fixtures; exercises runtime cache/state/request code, immutable retries and telemetry deduplication without pretending fixture state is a real simulation.                                                           |
-| `connection.spec.ts`                       | Targeted WS reconnect/malformed/run-change/disposal fixtures; actual backend polling recovers a missed real completion/report.                                                                                                                                                             |
-| `ai.spec.ts`                               | Actual unavailable AI with a successful core run; labeled provider/proposal/rate-limit/explanation/chat/narrative fixtures verify UI boundaries, explicit Save, identity, validation, safe text and numerical isolation.                                                                   |
+| Tests                                       | Evidence                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commandgrid-flow.spec.ts`                  | Real API persistence, engine, runner, WebSockets, success with optional failure, required failure, pause freeze, early finish, termination/reset, natural completion, active/delete/resource conflicts, launch race, historical snapshots and report comparison. No engine/state fixtures.                     |
+| `forms.spec.ts`                             | Real mission/objective writes, reload, scalar metadata, team regeneration (including repeated edits), identity preservation and atomic required swap. One targeted 422 fixture verifies field errors/draft retention.                                                                                          |
+| `foundation.spec.ts`, `responsive.spec.ts`  | Actual backend navigation, desktop/390px layouts, real map keyboard selection, no horizontal overflow or runtime errors, chart table alternatives, dialog focus/Escape/restore and persisted future-speed settings.                                                                                            |
+| `transport.spec.ts`                         | Actual server state seeds plus targeted delayed REST/WS/command/error fixtures; exercises runtime cache/state/request code, immutable retries and telemetry deduplication without pretending fixture state is a real simulation.                                                                               |
+| `connection.spec.ts`                        | Targeted WS reconnect/malformed/run-change/disposal fixtures; actual backend polling recovers a missed real completion/report.                                                                                                                                                                                 |
+| `ai.spec.ts`                                | Actual unavailable AI with a successful core run; labeled provider/proposal/rate-limit/explanation/chat/narrative fixtures verify UI boundaries, explicit Save, identity, validation, safe text and numerical isolation.                                                                                       |
+| `mock-ai.smoke.ts` with `mock-ai.config.ts` | Real backend mock service, no successful-response fixtures: mission/objective review, separate saves, identity preservation, explanation/chat numerical isolation and persisted report narrative after reload. Live providers are disabled with empty credentials; root Playwright configuration is unchanged. |
 
 Default Playwright uses a newly isolated **SQLite** database for each invocation, as configured by the existing runner. Backend unit/integration tests also run with their default isolated storage. These checks do **not** verify PostgreSQL/TimescaleDB. The two PostgreSQL-only backend tests are skipped without `TEST_DATABASE_URL`; the A/B handoff's older Timescale results are historical, not results of this frontend change.
 
@@ -104,6 +108,7 @@ All screenshots capture real SQLite-backed API/engine data, never Aurora preview
 - AI: `useAI.ts`, `types.ts`, `Availability.tsx`, `Provenance.tsx`, `ProposalPanel.tsx`, `Assistant.tsx`, `ReportNarrative.tsx` in `src/components/ai/`.
 - Removed unused preview modules: `src/data/demoMission.ts`, `src/types/preview.ts`, `src/components/layout/PlannedPage.tsx`.
 - Tests: updated `../e2e/foundation.spec.ts`; new `helpers.ts`, `transport.spec.ts`, `forms.spec.ts`, `commandgrid-flow.spec.ts`, `connection.spec.ts`, `ai.spec.ts`, `responsive.spec.ts` in `../e2e/`.
+- Testing additions: `../e2e/mock-ai.config.ts`, `../e2e/mock-ai.smoke.ts`, and the manual checklist `TESTING.md`.
 - Handoff: this README and ten screenshots in `screenshots/`.
 
 ## Milestones and integration
@@ -120,4 +125,4 @@ All screenshots capture real SQLite-backed API/engine data, never Aurora preview
 
 No backend interface/dependency change is required. The requested `docs/superpowers/plans/2026-10-10-commandgrid-part-c-complete.md` does not exist in the integrated checkout; progress is recorded here rather than creating or modifying an unrelated plan. The named executing-plans/Caveman skills were not installed, so the assignment and available repository contracts were followed directly. No coordinator thread was provided, and no external messages were sent.
 
-Remaining qualification: verify live provider calls and frontend-driven backend mock persistence; coordinate an isolated Timescale browser configuration if that storage evidence is needed. No application defects are currently known after the full regression. No paid infrastructure was provisioned.
+Remaining qualification: verify live provider calls; coordinate an isolated Timescale browser configuration if that storage evidence is needed. No application defects were found by these additional checks. No paid infrastructure was provisioned.
