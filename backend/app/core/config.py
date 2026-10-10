@@ -4,6 +4,8 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.services.ai.config import DEFAULT_GEMINI_MODELS
+
 BACKEND = Path(__file__).resolve().parents[2]
 REPO = BACKEND.parent
 
@@ -20,7 +22,7 @@ class Settings(BaseSettings):
     enable_ai: bool = True
     enable_qwen: bool = False
     gemini_api_key: str = Field(default="", repr=False)
-    gemini_model: str = "gemini-3.8-flash"
+    gemini_model: str = DEFAULT_GEMINI_MODELS
     qwen_base_url: str = "http://127.0.0.1:8001/v1"
     qwen_api_key: str = Field(default="", repr=False)
     qwen_model: str = "Qwen/Qwen3.8-27B"

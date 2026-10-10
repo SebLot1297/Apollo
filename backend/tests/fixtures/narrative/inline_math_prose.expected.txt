@@ -1,0 +1,4 @@
+The run keeps four mandatory objectives, and uptime is communication_uptime_percent.
+
+Uptime is recorded at 93.71111111104256%, compared with the >= 90% requirement.
+The elapsed window is 21600 seconds exactly, with success recorded as true.

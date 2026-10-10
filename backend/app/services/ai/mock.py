@@ -6,6 +6,99 @@ from uuid import NAMESPACE_URL, uuid5
 from .context import METRICS
 from .providers import ProviderResult
 
+_METRIC_LABELS = {
+    "communication_uptime_percent": ("communication uptime", "%"),
+    "equipment_availability_percent": ("equipment availability", "%"),
+    "incidents_resolved": ("incidents resolved", ""),
+    "supplies_delivered_percent": ("supplies delivered", "%"),
+    "systems_restored": ("systems restored", ""),
+    "elapsed_time_seconds": ("elapsed time", " s"),
+}
+
+
+def _format_number(value):
+    """Render a metric faithfully: whole numbers stay integral, fractions keep full precision."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        if float(value).is_integer():
+            return str(int(value))
+    except (OverflowError, ValueError):
+        return None
+    return str(value)
+
+
+def _metric_sentence(metrics):
+    if not isinstance(metrics, dict):
+        return None
+    parts = []
+    for key in sorted(METRICS):
+        if key not in metrics:
+            continue
+        number = _format_number(metrics[key])
+        if number is None:
+            continue
+        label, unit = _METRIC_LABELS.get(key, (key.replace("_", " "), ""))
+        parts.append(f"{label} {number}{unit}")
+    if not parts:
+        return None
+    return "Recorded metrics:\n" + "\n".join(f"- {part}" for part in parts)
+
+
+def _objective_lines(results):
+    lines = []
+    for result in results[:12] if isinstance(results, list) else []:
+        if not isinstance(result, dict):
+            continue
+        objective = result.get("objective")
+        if not isinstance(objective, dict):
+            continue
+        name = objective.get("name") or "Objective"
+        state = result.get("status", "pending")
+        achieved = _format_number(result.get("achieved_value"))
+        target = _format_number(objective.get("target_value"))
+        comparator = objective.get("operator", ">=")
+        if achieved is not None and target is not None:
+            lines.append(f"- {name}: {state} (observed {achieved}, target {comparator} {target})")
+        else:
+            lines.append(f"- {name}: {state}")
+    return lines
+
+
+def _recovery_sections(plan):
+    """Summarise guidance once per reason instead of repeating every blocked step."""
+    sections = []
+    if not isinstance(plan, dict):
+        return sections
+    steps = plan.get("steps")
+    steps = steps if isinstance(steps, list) else []
+    available, blocked = [], {}
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        title = step.get("title")
+        if not isinstance(title, str) or not title:
+            continue
+        reason = step.get("blocked_reason")
+        if not reason:
+            if title not in available:
+                available.append(title)
+            continue
+        blocked.setdefault(str(reason), []).append(title)
+    if available:
+        sections.append("Suggested next actions: " + ", ".join(available[:6]) + ".")
+    for reason, titles in list(blocked.items())[:3]:
+        unique = list(dict.fromkeys(titles))
+        shown = ", ".join(unique[:4])
+        if len(unique) > 4:
+            shown += f", and {len(unique) - 4} more"
+        sections.append(f"Not available right now: {shown} ({reason}).")
+    outlook = plan.get("objective_outlook")
+    if isinstance(outlook, dict):
+        verdict = "would" if outlook.get("can_finish_successfully") else "would not yet"
+        sections.append(f"Finishing the run now {verdict} satisfy every required objective.")
+    return sections
+
 
 class MockAIProvider:
     name = "mock"
@@ -73,68 +166,42 @@ class MockAIProvider:
 
     @staticmethod
     def explain(context: dict) -> str:
-        pieces = ["Deterministic demo explanation (no live AI model)."]
-        if "status" in context:
-            pieces.append(f"Recorded simulation status: {context['status']}.")
-        if isinstance(context.get("success"), bool):
-            pieces.append("Evaluator result: " + ("successful." if context["success"] else "unsuccessful."))
-        metrics = context.get("final_metrics", context.get("metrics", {}))
-        if isinstance(metrics, dict):
-            values = [
-                f"{key}: {metrics[key]}"
-                for key in sorted(METRICS & metrics.keys())
-                if isinstance(metrics[key], (int, float)) and not isinstance(metrics[key], bool)
-            ]
-            if values:
-                pieces.append("Recorded metrics: " + "; ".join(values) + ".")
-        results = context.get("objective_results", [])
-        for result in results[:12] if isinstance(results, list) else []:
-            if not isinstance(result, dict):
-                continue
-            objective = result.get("objective")
-            if not isinstance(objective, dict):
-                continue
-            name = objective.get("name", "Objective")
-            state = result.get("status", "pending")
-            achieved = result.get("achieved_value")
-            target = objective.get("target_value")
-            comparator = objective.get("operator", ">=")
-            pieces.append(f"{name}: {state}; observed {achieved}, target {comparator} {target}.")
+        """Readable deterministic prose: no inference, no repetition, no float noise."""
+        sections = ["Deterministic demo explanation (no live AI model)."]
+        status = context.get("status")
+        outcome = context.get("success")
+        if status is not None:
+            if isinstance(outcome, bool):
+                verdict = "successful" if outcome else "unsuccessful"
+                sections.append(f"The recorded run is {status}, and the evaluator marked it {verdict}.")
+            else:
+                sections.append(f"The recorded run status is {status}.")
+        elif isinstance(outcome, bool):
+            sections.append("The evaluator marked the run " + ("successful." if outcome else "unsuccessful."))
+        sentence = _metric_sentence(context.get("final_metrics", context.get("metrics", {})))
+        if sentence:
+            sections.append(sentence)
+        lines = _objective_lines(context.get("objective_results", []))
+        if lines:
+            sections.append("Objective outcomes:\n" + "\n".join(lines))
+        sections.extend(_recovery_sections(context.get("recovery_plan")))
         incident = context.get("incident")
         if isinstance(incident, dict):
-            pieces.append(f"Incident {incident.get('kind', 'record')}: {incident.get('status', 'unknown')}.")
-            hints = {
-                "communications_outage": "Review communication health and consider the backup communications command.",
-                "power_failure": "Review power availability and consider the backup power command.",
-                "equipment_degradation": "Review equipment availability and consider an equipment diagnostic.",
-            }
             kind = incident.get("kind")
-            if isinstance(kind, str) and kind in hints:
-                pieces.append(hints[kind])
-        strategy = context.get("recovery_plan")
-        if isinstance(strategy, dict):
-            steps = strategy.get("steps", [])
-            if isinstance(steps, list):
-                available = [
-                    step.get("title")
-                    for step in steps
-                    if isinstance(step, dict) and step.get("blocked_reason") is None and step.get("title")
-                ]
-                if available:
-                    pieces.append("Deterministic strategy: prioritise " + "; ".join(available[:6]) + ".")
-                for step in steps[:6]:
-                    if isinstance(step, dict) and step.get("blocked_reason"):
-                        pieces.append(
-                            f"Blocked: {step.get('title', 'step')} — {step['blocked_reason']}."
-                        )
-            outlook = strategy.get("objective_outlook")
-            if isinstance(outlook, dict):
-                verdict = "would" if outlook.get("can_finish_successfully") else "would not yet"
-                pieces.append(f"Finishing now {verdict} satisfy all required objectives.")
-        if len(pieces) == 1:
-            pieces.append("No simulation metrics were supplied. Select a run to explain recorded conditions.")
-        pieces.append("No success probability is calculated. Commands require an explicit operator action.")
-        return " ".join(pieces)
+            label = kind if isinstance(kind, str) else "record"
+            sections.append(f"Selected incident {label}: {incident.get('status', 'unknown')}.")
+            hints = {
+                "communications_outage": "Review communication health; the backup communications command may help.",
+                "power_failure": "Review power availability; the backup power command may help.",
+                "equipment_degradation": "Review equipment availability; an equipment diagnostic may help.",
+            }
+            hint = hints.get(kind) if isinstance(kind, str) else None
+            if hint:
+                sections.append(hint)
+        if len(sections) == 1:
+            sections.append("No simulation metrics were supplied. Select a run to explain its recorded conditions.")
+        sections.append("No success probability is calculated; commands require an explicit operator action.")
+        return "\n\n".join(sections)
 
     async def generate_structured(self, system: str, prompt: str, schema: dict, max_tokens: int) -> ProviderResult:
         data = json.loads(prompt)

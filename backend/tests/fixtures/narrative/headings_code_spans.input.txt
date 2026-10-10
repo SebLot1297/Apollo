@@ -1,0 +1,7 @@
+### Priorities
+
+1. Activate backup power.
+2. Run `equipment_diagnostic` on the *degraded* relay.
+
+#### Risks
+*The strategy is outdated* after a state change.

@@ -1,0 +1,8 @@
+Operation Signal Restore
+
+According to the recorded mission description, operators use this simulation to restore services while managing limited equipment availability.
+
+The recorded run specifically measures:
+- Maintaining communication service (target >= 90%, achieved ~ 93.71%)
+- Restoring two systems (target >= 2, achieved 3)
+- Preserving equipment availability (target >= 75%, achieved 80%)

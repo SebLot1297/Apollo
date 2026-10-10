@@ -1,0 +1,5 @@
+| Objective | Metric | Target | Achieved |
+| --- | --- | --- | --- |
+| Maintain communication | communication_uptime_percent | $>= 90$ | 93.71111111104256 |
+| Restore systems | systems_restored | $\ge 2$ | 3 |
+**Notes:** the deterministic evaluator is authoritative.
