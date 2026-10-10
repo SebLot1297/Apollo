@@ -109,11 +109,45 @@ export interface CommandRecord {
   timestamp?: string
   effect?: string
 }
+export type RunProfile = 'standard' | 'guided_demo'
+export interface RecoveryStep {
+  id: string
+  title: string
+  explanation: string
+  command_type: CommandType
+  payload: Record<string, unknown>
+  cost: number | null
+  effects: Record<string, number>
+  blocked_reason: string | null
+}
+export interface ObjectiveOutlookItem {
+  name: string
+  metric_key: MetricKey
+  operator: Operator
+  target_value: number
+  achieved_value: number
+  passed: boolean
+  status: string
+  reason: string
+}
+export interface ObjectiveOutlook {
+  can_finish_successfully: boolean
+  note: string | null
+  required_objectives: ObjectiveOutlookItem[]
+}
+export interface RecoveryPlan {
+  run_id: string
+  based_on_sequence: number
+  profile: RunProfile
+  steps: RecoveryStep[]
+  objective_outlook: ObjectiveOutlook
+}
 export interface MissionState {
   run_id: string
   mission_id: string
   mission: MissionConfiguration
   status: RunStatus
+  run_profile?: RunProfile
   elapsed_time_seconds: number
   random_seed: number
   time_multiplier: number

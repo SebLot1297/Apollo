@@ -30,7 +30,7 @@ Engine interface in app/simulation/engine.py: `create_state(mission, random_seed
 
 The native Part B state in app.schemas.simulation differs from the public JSON above. app.services.missions.engine_adapter maps native system objects, events and history to this contract. The complete native snapshot is saved in the run/command JSON but excluded from HTTP/WebSocket serialization. Public state/event sequences include runner recovery/reset events; native engine sequences are retained independently. Native history includes system percentages captured at each sampling boundary. GET /registry adapts Part B's registry lists to keyed dictionaries and category available flags. Numerical connectivity follows Part B's registry: effective communications and power health must both be >=50.
 
-Commands: start, pause, resume, trigger_incident (payload.kind), activate_backup_communications, activate_backup_power, run_equipment_diagnostic, restore_service (payload.incident_id optional), acknowledge_incident (payload.incident_id), finish, terminate. Reset API creates a NEW run from the same snapshot and seed; never erases prior results.
+Commands: start, pause, resume, set_speed (payload.time_multiplier: finite number greater than 0 and at most 3600; created/running/paused only), trigger_incident (payload.kind), activate_backup_communications, activate_backup_power, run_equipment_diagnostic, restore_service (payload.incident_id optional), acknowledge_incident (payload.incident_id), finish, terminate. Reset API creates a NEW run from the same snapshot and seed using the current saved default speed; never erases prior results.
 
 Report: run_id, mission, success, status, elapsed_time_seconds, final_metrics, objective_results, events, command_history, telemetry (history samples), summary, ai_analysis (nullable full AI envelope; narrative is in data.text), created_at. All required objectives must pass for success; terminated/failed runs are unsuccessful. AI cannot alter numeric results.
 
@@ -40,13 +40,13 @@ Base /api/v1. Errors use {detail: string} or FastAPI validation detail array. Pl
 
 - GET /missions -> MissionConfiguration[]; POST /missions (mission) -> mission, 201; GET/PUT/DELETE /missions/{id}; DELETE -> 204. Server owns updated_at.
 - GET/POST /missions/{id}/objectives; PUT/DELETE /objectives/{id}. Mission validation applies after edits.
-- POST /simulations {mission_id, random_seed:42, time_multiplier:30} -> MissionState created. GET /simulations -> summaries/full state[]. GET /simulations/{run_id} -> state. One active created/running/paused run per process; conflicts ->409.
+- POST /simulations {mission_id, random_seed:42, time_multiplier?:number} -> MissionState created. GET /simulations -> summaries/full state[]. GET /simulations/{run_id} -> state. Omitting time_multiplier uses the current persisted simulation_speed under the controller lock; an explicit value overrides only this run. Guided demo launches also use the shared default. One active created/running/paused run per process; conflicts ->409.
 - POST /simulations/{run_id}/commands {command_type, idempotency_key:UUID, payload:{}} -> MissionState. Reusing the same key/payload returns prior result; conflicting payload ->409. /start, /pause, /resume, /finish accept {idempotency_key}. /reset -> new state.
 - GET /simulations/{run_id}/events -> Event[]. GET /simulations/{run_id}/telemetry?from_seconds=&to_seconds= -> history sample[].
 - GET /reports -> Report[]; GET /reports/{run_id} -> Report.
 - WS /simulations/{run_id}/stream -> {type:'snapshot'|'update'|'completion', sequence, state:MissionState}. Connect/reconnect always gets current snapshot; client ignores duplicate/older sequence values and reconnects with bounded exponential backoff.
 - GET /registry -> {metrics:dict, parameters:dict, categories:[{key,label,available}]}.
-- GET /settings -> {ai_provider:'auto'|'gemini'|'qwen'|'mock', demo_mode:bool, simulation_speed:number, database:{engine,status}, ai_status:ProviderStatus[]}. PUT /settings updates only ai_provider,demo_mode,simulation_speed (future runs).
+- GET /settings -> {ai_provider:'auto'|'gemini'|'qwen'|'mock', demo_mode:bool, simulation_speed:number, database:{engine,status}, ai_status:ProviderStatus[]}. PUT /settings updates only ai_provider,demo_mode,simulation_speed. Saving simulation_speed atomically updates the shared default and the active created/running/paused run, after settling elapsed running time at the old speed. Paused runs remain paused. Future launches and resets across all missions use this default unless explicitly overridden; terminal runs/reports retain their evidence. Invalid speed payloads return 422; illegal command transitions return 409.
 - /health -> {status:'ok'}; /ready checks DB and identifies backend; no credentials returned.
 
 ## AI boundary

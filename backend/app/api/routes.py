@@ -98,6 +98,12 @@ async def create_run(body: CreateRun, request: Request):
     return await request.app.state.controller.create(str(body.mission_id), body.random_seed, body.time_multiplier)
 
 
+@router.post("/simulations/demo", status_code=201)
+async def demo_run(request: Request):
+    # Declared before /simulations/{run_id} so "demo" is never parsed as a UUID.
+    return await request.app.state.controller.create_demo()
+
+
 @router.get("/simulations/{run_id}")
 async def simulation(run_id: UUID, request: Request):
     return await request.app.state.controller.get(str(run_id))
@@ -122,6 +128,11 @@ async def shortcut(run_id: UUID, body: KeyRequest, request: Request):
 @router.post("/simulations/{run_id}/reset", status_code=201)
 async def reset(run_id: UUID, body: KeyRequest, request: Request):
     return await request.app.state.controller.reset(str(run_id), str(body.idempotency_key))
+
+
+@router.get("/simulations/{run_id}/recovery-plan")
+async def recovery_plan(run_id: UUID, request: Request):
+    return await request.app.state.controller.recovery_plan(str(run_id))
 
 
 @router.get("/simulations/{run_id}/events")

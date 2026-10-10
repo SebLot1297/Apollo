@@ -13,6 +13,40 @@ from fastapi.testclient import TestClient
 from test_repositories import storage as storage
 
 
+@pytest.mark.asyncio
+async def test_shared_speed_preserves_guided_boundaries_and_applies_to_demo_launches_and_resets(storage):
+    storage.save_settings({"simulation_speed": 4})
+    controller = Controller(storage, Hub(), EngineAdapter(engine))
+    moment = [100.0]
+    controller.clock = lambda: moment[0]
+    controller.clock_running = True
+    state = await controller.create_demo()
+    assert state.time_multiplier == 4
+    run_id = str(state.run_id)
+    started = await controller.command(run_id, "start", {}, str(uuid4()))
+    boundary = min(started.engine_snapshot["next_incident_at"].values())
+
+    # Saving at high elapsed wall time must still stop at the first incident.
+    moment[0] += 1000
+    preferences = {"simulation_speed": 4}
+    await controller.update_preferences(preferences, {"simulation_speed": 60})
+    paused = storage.get_run(run_id)
+    assert paused.run_profile == "guided_demo"
+    assert paused.status == "paused"
+    assert paused.elapsed_time_seconds == pytest.approx(boundary)
+    assert paused.time_multiplier == 60
+    assert len(paused.incidents) == 1
+
+    terminated = await controller.command(run_id, "terminate", {}, str(uuid4()))
+    reset = await controller.reset(run_id, str(uuid4()))
+    assert reset.run_profile == "guided_demo"
+    assert reset.time_multiplier == 60
+    assert reset.random_seed == terminated.random_seed
+    assert storage.get_report(run_id) is not None
+    await controller.command(str(reset.run_id), "terminate", {}, str(uuid4()))
+    assert (await controller.create_demo()).time_multiplier == 60
+
+
 @pytest.mark.parametrize("status", ["created", "running", "paused"])
 def test_engine_speed_changes_are_immutable_and_do_not_advance_simulated_time(status):
     state = engine.create_state(demo_mission(), time_multiplier=1)

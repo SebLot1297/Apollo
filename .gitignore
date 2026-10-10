@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 .codex-drafts/
+.freebuff/
 artifacts/
 test-results/
 playwright-report/
