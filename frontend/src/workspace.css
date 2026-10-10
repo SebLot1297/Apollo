@@ -16,6 +16,33 @@
   display: grid;
   gap: 20px;
 }
+.cg-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 110;
+  width: min(420px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  background: #142b23;
+  color: #dceee5;
+  box-shadow: 0 8px 28px #0006;
+}
+.cg-toast > svg {
+  flex-shrink: 0;
+  color: var(--green);
+}
+.cg-toast > span {
+  flex: 1;
+}
+.cg-toast .icon-button {
+  flex-shrink: 0;
+}
 .cg-content {
   padding: 20px;
 }

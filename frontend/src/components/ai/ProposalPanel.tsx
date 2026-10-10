@@ -23,12 +23,14 @@ export default function ProposalPanel({
   savedMission,
   onApply,
   objectivesOnly = false,
+  disabled = false,
 }: {
   mission: MissionDraft
   registry: Registry
   savedMission: boolean
   onApply: (mission: MissionConfiguration) => void
   objectivesOnly?: boolean
+  disabled?: boolean
 }) {
   const ai = useAI(),
     [prompt, setPrompt] = useState(''),
@@ -38,6 +40,7 @@ export default function ProposalPanel({
   const [selected, setSelected] = useState<Set<number>>(new Set()),
     [reviewError, setReviewError] = useState<unknown>(null)
   const canGenerate =
+    !disabled &&
     ai.available &&
     !ai.pending &&
     !ai.cooldown &&
@@ -149,6 +152,7 @@ export default function ProposalPanel({
           aria-label="Proposal prompt"
           value={prompt}
           maxLength={8000}
+          disabled={disabled}
           onChange={(event) => setPrompt(event.target.value)}
         />
         <small>
@@ -188,6 +192,7 @@ export default function ProposalPanel({
               aria-label="Proposal JSON"
               className="mono"
               rows={12}
+              disabled={disabled}
               value={text}
               onChange={(event) => setText(event.target.value)}
             />
@@ -197,6 +202,7 @@ export default function ProposalPanel({
               <label className="cg-check" key={index}>
                 <input
                   type="checkbox"
+                  disabled={disabled}
                   checked={selected.has(index)}
                   onChange={(event) =>
                     setSelected((current) => {
@@ -214,6 +220,7 @@ export default function ProposalPanel({
             <button
               className="button"
               type="button"
+              disabled={disabled}
               onClick={() => {
                 setProposal(null)
                 setReviewError(null)
@@ -224,7 +231,7 @@ export default function ProposalPanel({
             <button
               className="button primary"
               type="button"
-              disabled={kind === 'objectives' && !selected.size}
+              disabled={disabled || (kind === 'objectives' && !selected.size)}
               onClick={() => apply(false)}
             >
               {kind === 'mission'
@@ -235,7 +242,7 @@ export default function ProposalPanel({
               <button
                 className="button warning"
                 type="button"
-                disabled={!selected.size}
+                disabled={disabled || !selected.size}
                 onClick={() => apply(true)}
               >
                 Replace with selected objectives

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router-dom'
 import { Badge } from '../ui/Primitives'
+import NotificationToast from '../ui/NotificationToast'
 import { useRun, useRuns, terminalQueries } from '../../services/queries'
 import { useRunStream } from '../../services/stream'
 import { useWorkspace } from '../../store/workspace'
@@ -52,6 +53,7 @@ export default function AppLayout() {
       ?.label ?? 'Dashboard'
   return (
     <div className="app-shell">
+      <NotificationToast />
       {open && (
         <button
           className="nav-scrim"
