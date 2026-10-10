@@ -34,6 +34,8 @@ The dashboard shows **Open active run** only on the mission that owns that run. 
 
 ## 2. Run the success flow
 
+Before clicking **Launch** on your mission card, set **Simulation speed (×)** to the speed you want for that run. Use **1** for this checklist. Fractional speeds are supported; the value must be greater than 0 and at most 3600. **Use saved default** clears your launch override. A choice applies to that run and does not change Settings. Mission Control displays the captured speed after launch.
+
 | Action                                  | Expected result                                                                                                                        |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Dashboard → Launch your test mission    | Mission Control opens in **created** state. It has not started automatically.                                                          |
