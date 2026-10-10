@@ -4,6 +4,7 @@ import { Badge, PageHeading, PanelTitle } from '../components/ui/Primitives'
 import { Empty, ErrorNotice, Loading } from '../components/ui/Feedback'
 import ScenarioMap from '../components/dashboard/ScenarioMap'
 import Commands from '../components/control/Commands'
+import RecoveryPlan from '../components/control/RecoveryPlan'
 import ObjectiveResults from '../components/control/ObjectiveResults'
 import Events from '../components/control/Events'
 import Telemetry from '../components/reports/Telemetry'
@@ -101,6 +102,23 @@ export default function MissionControl() {
                 Duration {state.mission.duration_seconds} seconds · Speed{' '}
                 {state.time_multiplier}×
               </span>
+              {state.run_profile === 'guided_demo' && (
+                <Badge tone="cyan">Guided demo</Badge>
+              )}
+              {['running', 'paused'].includes(state.status) && (
+                <span data-testid="remaining-wall-time">
+                  ≈{' '}
+                  {elapsed(
+                    Math.max(
+                      0,
+                      (state.mission.duration_seconds -
+                        state.elapsed_time_seconds) /
+                        state.time_multiplier,
+                    ),
+                  )}{' '}
+                  wall time remaining
+                </span>
+              )}
               <span className="cg-help">
                 Sequence {state.sequence} · T+{' '}
                 {elapsed(state.elapsed_time_seconds)}
@@ -215,6 +233,7 @@ export default function MissionControl() {
               </section>
               <Commands key={state.run_id} state={state} incident={incident} />
             </div>
+            <RecoveryPlan key={`plan-${state.run_id}`} state={state} />
             <ObjectiveResults results={state.objective_results} />
             <Telemetry history={state.history} />
             <div className="cg-grid">
@@ -223,6 +242,7 @@ export default function MissionControl() {
                 key={state.run_id}
                 runId={state.run_id}
                 incident={incident}
+                sequence={state.sequence}
               />
             </div>
           </>

@@ -69,6 +69,17 @@ FIELDS = METRICS | {
     "summary",
     "history",
     "telemetry",
+    "recovery_plan",
+    "steps",
+    "explanation",
+    "cost",
+    "effects",
+    "blocked_reason",
+    "objective_outlook",
+    "can_finish_successfully",
+    "note",
+    "based_on_sequence",
+    "profile",
 }
 
 
