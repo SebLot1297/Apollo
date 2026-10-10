@@ -55,11 +55,13 @@ Final verification on 2026-10-10:
 
 | Command            | Result                                                                                                                                                                               |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run build`    | Passed TypeScript and Vite production build, 2582 modules; Vite build 1.41 seconds. Route splitting keeps all JavaScript chunks below 500 kB (entry 433.24 kB, telemetry 356.95 kB). |
+| `npm run build`    | Passed TypeScript and Vite production build, 2582 modules; Vite build 1.45 seconds. Route splitting keeps all JavaScript chunks below 500 kB (entry 433.24 kB, telemetry 356.95 kB). |
 | `npm run lint`     | Passed with no warnings or errors.                                                                                                                                                   |
 | `npm test`         | 125 passed, 2 PostgreSQL-only skipped, 194 subtests passed in 11.09 seconds.                                                                                                         |
-| `npm run test:e2e` | All 37 Chromium tests passed in 1.5 minutes against isolated backend/Vite servers.                                                                                                   |
+| `npm run test:e2e` | All 39 Chromium tests passed in 1.6 minutes against isolated backend/Vite servers.                                                                                                   |
 | `git diff --check` | Passed, no whitespace errors.                                                                                                                                                        |
+
+Objective editor regression: deleting all template objectives and then appending new ones originally crashed because field-array updates preceded watched values. Rows now match watched values by their objective UUID and use the field-array value during the transition. Two real-backend regression tests cover empty-to-new drafts, repeated middle-row replacement, saved objective POST/DELETE, preserved IDs and reload. The focused forms suite passed all seven tests in 22.5 seconds; build/lint and the complete 39-test browser suite passed. Backend source is unchanged; the backend result above is from the prior Part D integration verification.
 
 Screenshots were visually reviewed for desktop/mobile layout, readable telemetry axes, natural panel sizing and honest unavailable AI. Runtime and console-error checks passed for the desktop/390px real-data journeys. All 64 changed/added/removed files are inside the assigned frontend/test scope. The frontend lint configuration excludes generated `dist/` and Vite dependency caches so lint remains valid after builds/browser runs.
 

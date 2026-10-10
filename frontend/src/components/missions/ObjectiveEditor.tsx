@@ -26,7 +26,17 @@ export default function ObjectiveEditor({
     name: 'objectives',
     keyName: 'form_key',
   })
-  const objectives = useWatch({ control: form.control, name: 'objectives' })
+  const watchedObjectives = useWatch({
+    control: form.control,
+    name: 'objectives',
+  })
+  // Field-array mutations render before useWatch catches up. Match by domain ID
+  // so a shifted or new row never reads another objective or an absent index.
+  const objectives = fields.map(
+    (field) =>
+      watchedObjectives?.find((objective) => objective?.id === field.id) ??
+      field,
+  )
   const requiredCount = objectives.filter((o) => o.required).length
   const errors = form.formState.errors.objectives
   return (
