@@ -28,6 +28,10 @@ On the Objectives step:
 
 Review and Save. Reload and inspect the conditions/objectives. Every value should persist.
 
+Save should show **Configuration saved to the backend** and a link back to the dashboard. If validation fails, **Mission was not saved** appears with field errors; no mission write is sent. When shortening the template to 600 seconds, remove its 21600-second deadline objective as above, or change that deadline to at most 600. While Save is pending, draft controls are disabled. Editing again clears the saved confirmation.
+
+The dashboard shows **Open active run** only on the mission that owns that run. Other mission cards show a disabled **Launch** and identify the mission to finish or terminate first. Saved configurations become simulations in Mission Control only after launch. A run keeps the configuration and speed captured at launch; changing the source mission or saved speed does not change an older run.
+
 ## 2. Run the success flow
 
 | Action                                  | Expected result                                                                                                                        |

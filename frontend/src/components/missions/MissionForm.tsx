@@ -9,6 +9,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
+import { Link } from 'react-router-dom'
 import {
   useForm,
   useWatch,
@@ -44,6 +45,7 @@ export default function MissionForm({
   registry,
   editing,
   objectivesOnly = false,
+  savedInitially = false,
   onSave,
   afterSave,
 }: {
@@ -51,19 +53,27 @@ export default function MissionForm({
   registry: Registry
   editing: boolean
   objectivesOnly?: boolean
+  savedInitially?: boolean
   onSave: (mission: MissionConfiguration) => Promise<MissionConfiguration>
   afterSave?: (mission: MissionConfiguration) => void
 }) {
   const form = useForm<MissionDraft>({
     defaultValues: toDraft(initial),
+    values: toDraft(initial),
+    resetOptions: { keepDirtyValues: true },
     resolver: zodResolver(draftSchema(registry)),
     shouldFocusError: true,
   })
   const draft = useWatch({ control: form.control }) as MissionDraft
-  const [baseline, setBaseline] = useState(initial)
+  const [lastSaved, setLastSaved] = useState<MissionConfiguration | null>(null)
+  const baseline =
+    lastSaved &&
+    Date.parse(lastSaved.updated_at) >= Date.parse(initial.updated_at)
+      ? lastSaved
+      : initial
   const [step, setStep] = useState(0),
     [error, setError] = useState<unknown>(null),
-    [saved, setSaved] = useState(false)
+    [saved, setSaved] = useState(savedInitially)
   const confirm = useConfirm(),
     allowNavigation = useDirtyGuard(form.formState.isDirty)
   const saving = useRef(false)
@@ -79,7 +89,7 @@ export default function MissionForm({
             serializeDraft(values, baseline.parameters.team_count),
           )
           form.reset(toDraft(mission))
-          setBaseline(mission)
+          setLastSaved(mission)
           setSaved(true)
           allowNavigation()
           afterSave?.(mission)
@@ -102,6 +112,14 @@ export default function MissionForm({
         }
       },
       () => {
+        setSaved(false)
+        setError(
+          new Error(
+            objectivesOnly
+              ? 'Objectives were not saved. Correct the highlighted fields and save again.'
+              : 'Mission was not saved. Correct the highlighted fields and save again.',
+          ),
+        )
         if (!objectivesOnly) setStep(3)
       },
     )(event)
@@ -137,6 +155,7 @@ export default function MissionForm({
             <li key={label}>
               <button
                 type="button"
+                disabled={form.formState.isSubmitting}
                 onClick={() => setStep(index)}
                 aria-current={step === index ? 'step' : undefined}
               >
@@ -147,9 +166,10 @@ export default function MissionForm({
         </ol>
       )}
       <ErrorNotice error={error} />
-      {saved && (
+      {saved && !form.formState.isDirty && (
         <div role="status" className="cg-notice success">
-          Configuration saved to the backend.
+          Configuration saved to the backend.{' '}
+          <Link to="/">View saved missions and launch from the dashboard</Link>
         </div>
       )}
       {/* Keep every field mounted so an invalid hidden step can receive error focus. */}
@@ -166,6 +186,7 @@ export default function MissionForm({
             <button
               type="button"
               className="button"
+              disabled={form.formState.isSubmitting}
               onClick={async () => {
                 if (
                   form.formState.isDirty &&
@@ -222,7 +243,10 @@ export default function MissionForm({
             </Field>
             <label className="cg-field">
               <span>Category</span>
-              <select {...form.register('category')}>
+              <select
+                disabled={form.formState.isSubmitting}
+                {...form.register('category')}
+              >
                 {registry.categories.map((category) => (
                   <option
                     key={category.key}
@@ -274,6 +298,7 @@ export default function MissionForm({
           <label className="cg-check">
             <input
               type="checkbox"
+              disabled={form.formState.isSubmitting}
               {...form.register('parameters.backup_power_enabled')}
             />
             Backup power enabled
@@ -364,7 +389,7 @@ export default function MissionForm({
             <button
               type="button"
               className="button"
-              disabled={step === 0}
+              disabled={step === 0 || form.formState.isSubmitting}
               onClick={() => setStep(step - 1)}
             >
               Previous step
@@ -373,6 +398,7 @@ export default function MissionForm({
               <button
                 type="button"
                 className="button primary"
+                disabled={form.formState.isSubmitting}
                 onClick={async () => {
                   const fields: FieldPath<MissionDraft>[] =
                     step === 0
@@ -410,6 +436,7 @@ export default function MissionForm({
           savedMission={editing}
           onApply={apply}
           objectivesOnly={objectivesOnly}
+          disabled={form.formState.isSubmitting}
         />
       </section>
     </form>

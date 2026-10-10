@@ -54,11 +54,9 @@ export default function Dashboard() {
       if (!settings.data)
         throw new Error('Load server preferences before launching.')
       return parseState(
-        await api.createRun(
-          missionId,
-          randomSeed,
-          settings.data.simulation_speed,
-        ),
+        // The backend reads the saved speed at launch; a cached preference
+        // must never override the current server value.
+        await api.createRun(missionId, randomSeed),
       )
     },
     onSuccess: (state) => {
@@ -283,7 +281,7 @@ export default function Dashboard() {
                   >
                     Delete
                   </button>
-                  {active ? (
+                  {active?.mission_id === mission.id ? (
                     <Link
                       className="button"
                       to={`/mission-control/${active.run_id}`}
@@ -293,7 +291,12 @@ export default function Dashboard() {
                   ) : (
                     <button
                       className="button primary"
-                      disabled={launch.isPending || !settings.data}
+                      disabled={
+                        Boolean(active) ||
+                        runs.isPending ||
+                        launch.isPending ||
+                        !settings.data
+                      }
                       onClick={() => {
                         if (!launch.isPending) {
                           setError(null)
@@ -305,6 +308,15 @@ export default function Dashboard() {
                     </button>
                   )}
                 </div>
+                {active && active.mission_id !== mission.id && (
+                  <p className="cg-help">
+                    Finish or terminate “{active.mission.name}” before launching
+                    this mission.{' '}
+                    <Link to={`/mission-control/${active.run_id}`}>
+                      Open that active mission
+                    </Link>
+                  </p>
+                )}
               </article>
             ))}
           </div>

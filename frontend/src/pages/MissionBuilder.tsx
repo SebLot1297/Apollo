@@ -9,7 +9,7 @@ import {
   cloneMission,
 } from '../features/missions/templates'
 import { api } from '../services/api'
-import { useMission, useRegistry, invalidateMission } from '../services/queries'
+import { useMission, useRegistry, cacheMission } from '../services/queries'
 import type { MissionConfiguration, Registry } from '../types/mission'
 export default function MissionBuilder() {
   const { missionId = '' } = useParams(),
@@ -18,6 +18,7 @@ export default function MissionBuilder() {
     mission = useMission(missionId || cloneId),
     registry = useRegistry()
   const [blank] = useState(signalRestoreTemplate)
+  const [savedId, setSavedId] = useState('')
   const editing = Boolean(missionId)
   return (
     <div className="page cg-stack">
@@ -50,6 +51,8 @@ export default function MissionBuilder() {
             registry={registry.data}
             cloning={Boolean(cloneId)}
             editing={editing}
+            savedInitially={Boolean(missionId) && savedId === missionId}
+            onSaved={(saved) => setSavedId(saved.id)}
           />
         )
       )}
@@ -61,28 +64,34 @@ function BuilderEditor({
   registry,
   cloning,
   editing,
+  savedInitially,
+  onSaved,
 }: {
   source: MissionConfiguration
   registry: Registry
   cloning: boolean
   editing: boolean
+  savedInitially: boolean
+  onSaved: (mission: MissionConfiguration) => void
 }) {
   const client = useQueryClient(),
     navigate = useNavigate()
   const [initial] = useState(() => (cloning ? cloneMission(source) : source))
   return (
     <MissionForm
-      initial={initial}
+      initial={editing ? source : initial}
+      savedInitially={savedInitially}
       registry={registry}
       editing={editing}
       onSave={async (configuration) => {
         const saved = await api.saveMission(configuration, editing)
-        await invalidateMission(client, saved.id)
+        await cacheMission(client, saved)
         return saved
       }}
-      afterSave={(saved) =>
+      afterSave={(saved) => {
+        onSaved(saved)
         navigate(`/mission-builder/${saved.id}`, { replace: true })
-      }
+      }}
     />
   )
 }
