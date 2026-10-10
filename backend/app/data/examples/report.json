@@ -316,6 +316,12 @@
         "supplies_delivered_percent": 0.0,
         "systems_restored": 0,
         "elapsed_time_seconds": 0
+      },
+      "systems": {
+        "communication_health": 45.0,
+        "equipment_availability": 75.0,
+        "power_availability": 65.0,
+        "resource_level": 70.0
       }
     },
     {
@@ -329,6 +335,12 @@
         "supplies_delivered_percent": 0.0,
         "systems_restored": 0,
         "elapsed_time_seconds": 0
+      },
+      "systems": {
+        "communication_health": 45.0,
+        "equipment_availability": 75.0,
+        "power_availability": 65.0,
+        "resource_level": 70.0
       }
     },
     {
@@ -342,6 +354,12 @@
         "supplies_delivered_percent": 0.0,
         "systems_restored": 1,
         "elapsed_time_seconds": 0
+      },
+      "systems": {
+        "communication_health": 85.0,
+        "equipment_availability": 75.0,
+        "power_availability": 65.0,
+        "resource_level": 68.0
       }
     },
     {
@@ -355,6 +373,12 @@
         "supplies_delivered_percent": 0.0,
         "systems_restored": 2,
         "elapsed_time_seconds": 0
+      },
+      "systems": {
+        "communication_health": 85.0,
+        "equipment_availability": 75.0,
+        "power_availability": 90.0,
+        "resource_level": 65.0
       }
     },
     {
@@ -368,6 +392,12 @@
         "supplies_delivered_percent": 0.25994800693264003,
         "systems_restored": 2,
         "elapsed_time_seconds": 60.0
+      },
+      "systems": {
+        "communication_health": 85.0,
+        "equipment_availability": 75.0,
+        "power_availability": 90.0,
+        "resource_level": 64.97400519930673
       }
     },
     {
@@ -381,6 +411,12 @@
         "supplies_delivered_percent": 0.5197920554555752,
         "systems_restored": 2,
         "elapsed_time_seconds": 120.0
+      },
+      "systems": {
+        "communication_health": 85.0,
+        "equipment_availability": 75.0,
+        "power_availability": 90.0,
+        "resource_level": 64.94802079445444
       }
     },
     {
@@ -394,6 +430,12 @@
         "supplies_delivered_percent": 0.5197920554555752,
         "systems_restored": 2,
         "elapsed_time_seconds": 120.0
+      },
+      "systems": {
+        "communication_health": 85.0,
+        "equipment_availability": 75.0,
+        "power_availability": 90.0,
+        "resource_level": 64.94802079445444
       }
     }
   ],

@@ -60,6 +60,7 @@ class HistorySample(DomainModel):
     timestamp: AwareDatetime
     sequence: Annotated[int, Field(strict=True, ge=0)]
     metrics: dict[str, float | int]
+    systems: dict[str, float] = Field(default_factory=dict)
 
 
 class CommandRecord(DomainModel):

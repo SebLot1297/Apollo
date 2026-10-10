@@ -104,4 +104,9 @@ def spend_resources(state, amount):
 def sample(state):
     state.history.append(HistorySample(elapsed_time_seconds=state.elapsed_time_seconds,
                                       timestamp=timestamp(state), sequence=state.sequence,
-                                      metrics=dict(state.metrics)))
+                                      metrics=dict(state.metrics), systems={
+                                          "communication_health": state.systems["communications"].health,
+                                          "equipment_availability": state.systems["equipment"].health,
+                                          "power_availability": state.systems["power"].health,
+                                          "resource_level": state.resource_remaining,
+                                      }))

@@ -338,6 +338,12 @@
         "supplies_delivered_percent": 0.0,
         "systems_restored": 0,
         "elapsed_time_seconds": 0
+      },
+      "systems": {
+        "communication_health": 45.0,
+        "equipment_availability": 75.0,
+        "power_availability": 65.0,
+        "resource_level": 70.0
       }
     },
     {
@@ -351,6 +357,12 @@
         "supplies_delivered_percent": 0.0,
         "systems_restored": 0,
         "elapsed_time_seconds": 0
+      },
+      "systems": {
+        "communication_health": 45.0,
+        "equipment_availability": 75.0,
+        "power_availability": 65.0,
+        "resource_level": 70.0
       }
     },
     {
@@ -364,6 +376,12 @@
         "supplies_delivered_percent": 0.0,
         "systems_restored": 1,
         "elapsed_time_seconds": 0
+      },
+      "systems": {
+        "communication_health": 85.0,
+        "equipment_availability": 75.0,
+        "power_availability": 65.0,
+        "resource_level": 68.0
       }
     },
     {
@@ -377,6 +395,12 @@
         "supplies_delivered_percent": 0.0,
         "systems_restored": 2,
         "elapsed_time_seconds": 0
+      },
+      "systems": {
+        "communication_health": 85.0,
+        "equipment_availability": 75.0,
+        "power_availability": 90.0,
+        "resource_level": 65.0
       }
     }
   ],

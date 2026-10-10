@@ -1,4 +1,4 @@
-import type { Mission } from '../types/mission'
+import type { Mission } from '../types/preview'
 export const demoMission: Mission = {
   id: 'demo-aurora',
   name: 'Operation Aurora',

@@ -15,6 +15,15 @@ playwright-report/
 dist
 dist-ssr
 *.local
+.env
+!.env.example
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+backend/data/
+.data/
 
 # Editor directories and files
 .vscode/*

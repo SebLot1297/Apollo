@@ -1,17 +1,25 @@
 {
-  "name": "commandgrid",
+  "name": "commandgrid-workspace",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": ["frontend"],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "vite preview",
-    "test": "playwright test",
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "dev:backend": "node scripts/backend.mjs -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1",
+    "dev:frontend": "npm run dev --workspace frontend -- --host 127.0.0.1 --port 5173 --strictPort",
+    "build": "npm run build --workspace frontend",
+    "lint": "npm run lint --workspace frontend",
+    "lint:backend": "node scripts/backend.mjs -m ruff check --config backend/pyproject.toml backend/app/core backend/app/api backend/app/db backend/app/models backend/app/repositories backend/app/services/missions backend/app/services/reports backend/app/websocket backend/app/main.py backend/app/migrate.py backend/tests/test_api.py backend/tests/test_repositories.py backend/tests/test_integration.py backend/tests/test_real_engine_integration.py",
+    "preview": "npm run preview --workspace frontend",
+    "test": "npm run test:backend",
+    "test:backend": "node scripts/backend.mjs -m pytest backend/tests -q",
     "test:e2e": "playwright test",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "db:up": "docker compose up -d db",
+    "db:migrate": "node scripts/backend.mjs -m app.migrate",
+    "format": "prettier --write scripts docs README.md",
+    "format:check": "prettier --check scripts docs README.md"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

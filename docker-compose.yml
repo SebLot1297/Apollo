@@ -1,0 +1,59 @@
+name: commandgrid
+services:
+  db:
+    image: ${TIMESCALE_IMAGE:-timescale/timescaledb:2.23.1-pg17}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-commandgrid}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-commandgrid_local}
+      POSTGRES_DB: ${POSTGRES_DB:-commandgrid}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - commandgrid-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-commandgrid} -d ${POSTGRES_DB:-commandgrid}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  backend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/backend.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-commandgrid}:${POSTGRES_PASSWORD:-commandgrid_local}@db:5432/${POSTGRES_DB:-commandgrid}
+      DATA_DIR: /data
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      QWEN_BASE_URL: ${QWEN_BASE_URL:-}
+      QWEN_MODEL: ${QWEN_MODEL:-Qwen/Qwen3.8-27B}
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+      ENABLE_QWEN: ${ENABLE_QWEN:-false}
+      ENABLE_AI: ${ENABLE_AI:-true}
+      AI_PRIMARY_PROVIDER: ${AI_PRIMARY_PROVIDER:-auto}
+      SIMULATION_TIME_MULTIPLIER: ${SIMULATION_TIME_MULTIPLIER:-30}
+      SIMULATION_TICK_SECONDS: ${SIMULATION_TICK_SECONDS:-1}
+      APP_ENV: production
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - commandgrid-backend:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/frontend.Dockerfile
+    ports:
+      - "127.0.0.1:4173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+volumes:
+  commandgrid-db:
+  commandgrid-backend:

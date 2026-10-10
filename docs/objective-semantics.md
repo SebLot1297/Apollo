@@ -8,6 +8,8 @@ affect numerical state. Custom metadata is never interpreted.
 
 ## Integration baseline and dependencies
 
+**Coordinator integration update:** The historical baseline notes below describe the isolated Part B checkout. Part A now provides backend/pyproject.toml, uv.lock, the project virtual environment and docs/api-contract.md. Run npm test for the complete pytest suite. EngineAdapter translates native fields to the public API without changing numerical rules, persists seeded cursors/objective evidence privately, and preserves runner recovery events. Native HistorySample now additionally stores systems (communication_health, equipment_availability, power_availability, resource_level) at each sample boundary. Example state/report JSON is regenerated accordingly. See docs/part-a-handoff.md for the current integration status; the isolated verification notes below are historical.
+
 The checked-out Apollo foundation did **not** include `docs/api-contract.md`,
 `docs/superpowers/plans/2026-10-10-commandgrid-parallel.md`, any backend draft,
 backend virtual environment, or the executing-plans skill. This implementation
@@ -72,14 +74,14 @@ equipment); they do not independently execute operations. Teams display
 `available`. Those display assignments do not remove teams from the aggregate
 recovery/delivery capability.
 
-| Metric | Calculation | Range/unit | Supported modes |
-| --- | --- | --- | --- |
-| `communication_uptime_percent` | `100 * connected_time_seconds / elapsed_time_seconds` | 0–100 % | final, maintained, deadline |
-| `equipment_availability_percent` | `100 * operational_units / 20` | 0–100 %, in 5-point increments | final, maintained, deadline |
-| `incidents_resolved` | Number of distinct resolved incident IDs | Nonnegative integer count | final, maintained, deadline, accumulated |
-| `supplies_delivered_percent` | Actual cumulative deliveries, capped at 100 | 0–100 % | final, maintained, deadline, accumulated |
-| `systems_restored` | Closed legitimate recovery episodes | Nonnegative integer count | final, maintained, deadline, accumulated |
-| `elapsed_time_seconds` | Actual elapsed simulation time | 0–86400 seconds, further bounded by mission duration | final, maintained, deadline, accumulated |
+| Metric                           | Calculation                                           | Range/unit                                           | Supported modes                          |
+| -------------------------------- | ----------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------- |
+| `communication_uptime_percent`   | `100 * connected_time_seconds / elapsed_time_seconds` | 0–100 %                                              | final, maintained, deadline              |
+| `equipment_availability_percent` | `100 * operational_units / 20`                        | 0–100 %, in 5-point increments                       | final, maintained, deadline              |
+| `incidents_resolved`             | Number of distinct resolved incident IDs              | Nonnegative integer count                            | final, maintained, deadline, accumulated |
+| `supplies_delivered_percent`     | Actual cumulative deliveries, capped at 100           | 0–100 %                                              | final, maintained, deadline, accumulated |
+| `systems_restored`               | Closed legitimate recovery episodes                   | Nonnegative integer count                            | final, maintained, deadline, accumulated |
+| `elapsed_time_seconds`           | Actual elapsed simulation time                        | 0–86400 seconds, further bounded by mission duration | final, maintained, deadline, accumulated |
 
 **Connected service** requires effective communication health >= 50 **and**
 effective power health >= 50. At zero elapsed time uptime is 100 if this predicate
@@ -117,17 +119,17 @@ commands. Sampling or splitting ticks does not change integration.
 W = weather_severity / 100; E = environmental_disruption / 100;
 C = communication_reliability / 100; Q = equipment_reliability / 100.
 
-| Parameter | Explicit effect |
-| --- | --- |
-| Weather | Increases communication and power incident rates by `0.8 * W` per hour. |
-| Environmental disruption | Initial power health `100 - environmental_disruption / 2`; adds `0.8 * E` power and `0.4 * E` equipment incidents/hour. |
-| Equipment reliability | Sets initial operational unit count; adds `1.6 * (1-Q)` equipment incidents/hour. |
-| Communication reliability | Sets initial communication health; adds `1.5 * (1-C)` communication incidents/hour. |
-| Team count | Multiplies delivery rate and divides repair costs. |
-| Resource level | Initial resource budget; constrains backups, restoration, diagnostics, and deliveries. |
-| Backup power enabled | Makes the backup power command available; does not activate it automatically. |
-| Mission duration | Defines the clipping/completion endpoint. |
-| Custom metadata | No effect. |
+| Parameter                 | Explicit effect                                                                                                         |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Weather                   | Increases communication and power incident rates by `0.8 * W` per hour.                                                 |
+| Environmental disruption  | Initial power health `100 - environmental_disruption / 2`; adds `0.8 * E` power and `0.4 * E` equipment incidents/hour. |
+| Equipment reliability     | Sets initial operational unit count; adds `1.6 * (1-Q)` equipment incidents/hour.                                       |
+| Communication reliability | Sets initial communication health; adds `1.5 * (1-C)` communication incidents/hour.                                     |
+| Team count                | Multiplies delivery rate and divides repair costs.                                                                      |
+| Resource level            | Initial resource budget; constrains backups, restoration, diagnostics, and deliveries.                                  |
+| Backup power enabled      | Makes the backup power command available; does not activate it automatically.                                           |
+| Mission duration          | Defines the clipping/completion endpoint.                                                                               |
+| Custom metadata           | No effect.                                                                                                              |
 
 Per-kind rates in incidents/hour are:
 
@@ -147,11 +149,11 @@ Manual incidents do not consume or reschedule the random streams.
 The uniform mapping is `(bits + 0.5) / 2**53`, capped at the largest representable
 float below 1 to avoid a rare rounding-induced logarithm domain error.
 
-| Kind | Unresolved impact | Recovery |
-| --- | --- | --- |
+| Kind                  | Unresolved impact                               | Recovery                                                |
+| --------------------- | ----------------------------------------------- | ------------------------------------------------------- |
 | communications_outage | Subtracts 65 from communication baseline health | Restore service, or mitigate with backup communications |
-| power_failure | Subtracts 70 from power baseline health | Restore service, or mitigate with enabled backup power |
-| equipment_degradation | Removes 4 operational equipment units | Restore service or equipment diagnostic |
+| power_failure         | Subtracts 70 from power baseline health         | Restore service, or mitigate with enabled backup power  |
+| equipment_degradation | Removes 4 operational equipment units           | Restore service or equipment diagnostic                 |
 
 Unresolved impacts stack and are bounded at zero. Acknowledged incidents retain
 their effects. Incidents remain unresolved until a recovery command resolves
@@ -168,19 +170,19 @@ Unsupported names/payload fields, unavailable capabilities, insufficient
 resources, missing incidents, and illegal transitions raise useful `ValueError`s.
 Rejected commands leave input state intact.
 
-| Command | Payload/effect |
-| --- | --- |
-| start | created -> running; no clock advance |
-| pause | running -> paused |
-| resume | paused -> running |
-| trigger_incident | Required `kind`; one supported synthetic incident |
-| activate_backup_communications | Costs 2 resource units; effective communication health floor 85 |
-| activate_backup_power | Requires backup_power_enabled; costs 3 resources; effective power health floor 90 |
-| run_equipment_diagnostic | Repairs equipment baseline to 20 operational units and resolves all equipment incidents; costs `5 / N` resources when needed |
-| restore_service | Optional `incident_id`; resolves that incident and repairs its system baseline, or all unresolved incidents/impaired baselines when omitted; costs `8 * distinct repaired systems / N` resources |
-| acknowledge_incident | Required `incident_id`; active -> acknowledged, without restoring service |
-| finish | Ends running or paused run at the actual current time |
-| terminate | Ends created, running, or paused run unsuccessfully |
+| Command                        | Payload/effect                                                                                                                                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| start                          | created -> running; no clock advance                                                                                                                                                             |
+| pause                          | running -> paused                                                                                                                                                                                |
+| resume                         | paused -> running                                                                                                                                                                                |
+| trigger_incident               | Required `kind`; one supported synthetic incident                                                                                                                                                |
+| activate_backup_communications | Costs 2 resource units; effective communication health floor 85                                                                                                                                  |
+| activate_backup_power          | Requires backup_power_enabled; costs 3 resources; effective power health floor 90                                                                                                                |
+| run_equipment_diagnostic       | Repairs equipment baseline to 20 operational units and resolves all equipment incidents; costs `5 / N` resources when needed                                                                     |
+| restore_service                | Optional `incident_id`; resolves that incident and repairs its system baseline, or all unresolved incidents/impaired baselines when omitted; costs `8 * distinct repaired systems / N` resources |
+| acknowledge_incident           | Required `incident_id`; active -> acknowledged, without restoring service                                                                                                                        |
+| finish                         | Ends running or paused run at the actual current time                                                                                                                                            |
+| terminate                      | Ends created, running, or paused run unsuccessfully                                                                                                                                              |
 
 Activating an already active backup, acknowledging an acknowledged/resolved
 incident, restoring an already resolved incident, or requesting repair of healthy
@@ -245,19 +247,19 @@ This avoids floating-point artifacts such as `0.1 + 0.2` differing from `0.3`.
 Strict inequalities exclude the equality tolerance band. Integer counters are
 compared with integral thresholds, so ordinary integer comparisons are unchanged.
 
-* **final:** Pending until a terminal endpoint; compare the actual metric there.
+- **final:** Pending until a terminal endpoint; compare the actual metric there.
   Early satisfaction does not guarantee a final pass.
-* **maintained:** Observe the whole simulated history, including initial t=0,
+- **maintained:** Observe the whole simulated history, including initial t=0,
   all commands, incidents, and every continuous interval. Remember the first
   breach forever. A later recovery cannot erase it. With no breach, the result
   remains pending until the endpoint and then passes.
-* **deadline:** Record the first simulated satisfaction time. Pass iff that time
+- **deadline:** Record the first simulated satisfaction time. Pass iff that time
   is **<= deadline_seconds**, with an inclusive boundary and no additional time
   tolerance. The first time persists if a metric later declines. If the deadline
   passes without timely achievement, status is expired; an achievement afterward
   is recorded but cannot turn the result into a pass. Exactly at the boundary,
   an unmet condition remains pending so a command at that same time may achieve it.
-* **accumulated:** Compare a genuine cumulative counter/value once; do not sum
+- **accumulated:** Compare a genuine cumulative counter/value once; do not sum
   telemetry samples. Only cumulative supplies, incident count, restoration count,
   and elapsed time support this mode. Result progress can be passed before the
   endpoint; nonmonotone conditions such as `count <= target` may later fail.
@@ -331,10 +333,10 @@ tests exercise both six-hour outcomes under the actual same evaluation rules.
 
 Full, JSON-serializable integration examples are included at:
 
-* `backend/app/data/examples/mission.json`: complete demonstration configuration.
-* `backend/app/data/examples/state.json`: complete started state after backups;
+- `backend/app/data/examples/mission.json`: complete demonstration configuration.
+- `backend/app/data/examples/state.json`: complete started state after backups;
   includes every replay field and is suitable for `MissionState.model_validate_json`.
-* `backend/app/data/examples/report.json`: an actual early-finish report at 120s,
+- `backend/app/data/examples/report.json`: an actual early-finish report at 120s,
   generated from that example state via tick and finish. This early example is
   distinct from the tests of full six-hour outcomes.
 
@@ -372,14 +374,14 @@ startup scripts are modified. No commit or push is performed.
 
 Changed-file inventory (20 new files):
 
-| Directory | Files |
-| --- | --- |
-| `backend/app/schemas/` | `__init__.py`, `mission.py`, `simulation.py` |
-| `backend/app/simulation/` | `__init__.py`, `registry.py`, `clock.py`, `metrics.py`, `incidents.py`, `objectives.py`, `commands.py`, `engine.py` |
-| `backend/app/data/` | `__init__.py`, `seed.py`, `examples.py` |
-| `backend/app/data/examples/` | `mission.json`, `state.json`, `report.json` |
-| `backend/tests/` | `test_schemas.py`, `test_engine.py` |
-| `docs/` | `objective-semantics.md` |
+| Directory                    | Files                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `backend/app/schemas/`       | `__init__.py`, `mission.py`, `simulation.py`                                                                        |
+| `backend/app/simulation/`    | `__init__.py`, `registry.py`, `clock.py`, `metrics.py`, `incidents.py`, `objectives.py`, `commands.py`, `engine.py` |
+| `backend/app/data/`          | `__init__.py`, `seed.py`, `examples.py`                                                                             |
+| `backend/app/data/examples/` | `mission.json`, `state.json`, `report.json`                                                                         |
+| `backend/tests/`             | `test_schemas.py`, `test_engine.py`                                                                                 |
+| `docs/`                      | `objective-semantics.md`                                                                                            |
 
 Verification result: **35 test methods passed**, including parameterized subtests
 for all operators/modes, schema boundaries, command errors, replay/chunking,
@@ -388,16 +390,16 @@ command remains unavailable because its project environment has not been provide
 
 ## Known simplifications and remaining integration work
 
-* Facilities/coordinates and support operations are fictional; there is no real
+- Facilities/coordinates and support operations are fictional; there is no real
   targeting, operational dispatch, real weather, route finding, or weapon control.
-* Aggregate health and 20 equipment units are a small explanatory model, not
+- Aggregate health and 20 equipment units are a small explanatory model, not
   engineering reliability predictions. Damage stacks; recoveries are immediate
   and cost resources. Backups persist for the run and have no modeled fuel timer.
-* Support delivery runs concurrently with recovery; displayed team assignments
+- Support delivery runs concurrently with recovery; displayed team assignments
   are indicators rather than a scheduling model. Metadata has no numerical effects.
-* The engine does not provide API transport, persistence, WebSockets, HTTP
+- The engine does not provide API transport, persistence, WebSockets, HTTP
   idempotency keys, real-time scaling, or AI narratives. Those remain other agents'
   work. Accepted semantic no-ops are still recorded here.
-* Dependency provisioning and the exact pytest invocation await Agent A. Shared
+- Dependency provisioning and the exact pytest invocation await Agent A. Shared
   contract compatibility awaits the missing API contract/parallel plan and
   coordinator review. No coordinator or Agent A chat was identified in this session.
