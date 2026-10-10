@@ -1,7 +1,7 @@
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, ValidationInfo, field_validator
 
 
 class RequestModel(BaseModel):
@@ -14,11 +14,16 @@ class CreateRun(RequestModel):
     time_multiplier: Annotated[float, Field(strict=True, gt=0, le=3600)] | None = None
 
 
+class SpeedPayload(RequestModel):
+    time_multiplier: Annotated[float, Field(strict=True, gt=0, le=3600)]
+
+
 class Command(RequestModel):
     command_type: Literal[
         "start",
         "pause",
         "resume",
+        "set_speed",
         "trigger_incident",
         "activate_backup_communications",
         "activate_backup_power",
@@ -29,7 +34,14 @@ class Command(RequestModel):
         "terminate",
     ]
     idempotency_key: UUID
-    payload: dict = Field(default_factory=dict)
+    payload: dict = Field(default_factory=dict, validate_default=True)
+
+    @field_validator("payload")
+    @classmethod
+    def validate_speed_payload(cls, payload, info: ValidationInfo):
+        if info.data.get("command_type") == "set_speed":
+            SpeedPayload.model_validate(payload)
+        return payload
 
 
 class KeyRequest(RequestModel):

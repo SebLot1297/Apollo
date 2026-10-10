@@ -95,8 +95,7 @@ async def simulations(request: Request):
 
 @router.post("/simulations", status_code=201)
 async def create_run(body: CreateRun, request: Request):
-    speed = body.time_multiplier or request.app.state.preferences["simulation_speed"]
-    return await request.app.state.controller.create(str(body.mission_id), body.random_seed, speed)
+    return await request.app.state.controller.create(str(body.mission_id), body.random_seed, body.time_multiplier)
 
 
 @router.get("/simulations/{run_id}")
@@ -181,9 +180,9 @@ async def settings(request: Request):
 @router.put("/settings")
 async def update_settings(body: Preferences, request: Request):
     async with request.app.state.settings_lock:
-        value = {**request.app.state.preferences, **body.model_dump(exclude_none=True)}
-        await stored(request, "save_settings", value)
-        request.app.state.preferences = value
+        await request.app.state.controller.update_preferences(
+            request.app.state.preferences, body.model_dump(exclude_none=True)
+        )
     return await settings(request)
 
 

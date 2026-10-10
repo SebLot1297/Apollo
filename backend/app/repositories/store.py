@@ -279,13 +279,15 @@ class Store:
             row = session.get(SettingsRow, 1)
             return dict(row.value) if row else {}
 
-    def save_settings(self, value):
+    def save_settings(self, value, state=None, report=None):
         with self.db.sessions.begin() as session:
             row = session.get(SettingsRow, 1)
             if row:
                 row.value = dict(value)
             else:
                 session.add(SettingsRow(id=1, value=dict(value)))
+            if state is not None:
+                self.persist_transition(state, report=report, _session=session)
 
     def audit_ai(self, task, envelope, status="success"):
         with self.db.sessions.begin() as session:

@@ -2,7 +2,8 @@
 from uuid import UUID
 
 from app.schemas.simulation import CommandRecord
-from .clock import timestamp
+
+from .clock import finite_number, timestamp
 from .incidents import INCIDENT_DEFINITIONS, add_incident, emit, resolve_incident
 from .metrics import KIND_SYSTEM, refresh_systems, spend_resources
 
@@ -11,10 +12,12 @@ COMMAND_PAYLOADS = {
     "trigger_incident": {"kind"}, "activate_backup_communications": set(),
     "activate_backup_power": set(), "run_equipment_diagnostic": set(),
     "restore_service": {"incident_id"}, "acknowledge_incident": {"incident_id"},
+    "set_speed": {"time_multiplier"},
 }
 COMMAND_STATUSES = {
     "start": {"created"}, "pause": {"running"}, "resume": {"paused"},
     "finish": {"running", "paused"}, "terminate": {"created", "running", "paused"},
+    "set_speed": {"created", "running", "paused"},
 }
 
 
@@ -30,6 +33,10 @@ def validate_command(state, command_type, payload):
     allowed = COMMAND_STATUSES.get(command_type, {"running"})
     if state.status not in allowed:
         raise ValueError(f"{command_type} is illegal while run is {state.status}; expected {sorted(allowed)}")
+    if command_type == "set_speed":
+        speed = finite_number(payload.get("time_multiplier"), "time_multiplier", positive=True)
+        if speed > 3600:
+            raise ValueError("time_multiplier must be at most 3600")
     if command_type == "trigger_incident":
         kind = payload.get("kind")
         if not isinstance(kind, str) or kind not in INCIDENT_DEFINITIONS:
@@ -84,6 +91,9 @@ def execute(state, command_type, payload):
     if command_type in ("start", "pause", "resume"):
         state.status = {"start": "running", "pause": "paused", "resume": "running"}[command_type]
         effect = f"Run is {state.status} at {state.elapsed_time_seconds:g} simulated seconds"
+    elif command_type == "set_speed":
+        state.time_multiplier = float(payload["time_multiplier"])
+        effect = f"Simulation speed changed to {state.time_multiplier:g}x"
     elif command_type == "finish":
         # The engine finalizes objective evidence before selecting completed/failed.
         effect = "Finished at the actual elapsed time without advancing the clock"
