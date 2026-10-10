@@ -1,122 +1,202 @@
-import { Code2, GitBranch, Layers, Settings2 } from 'lucide-react'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { Badge, PageHeading, PanelTitle } from '../components/ui/Primitives'
-const phases = [
-  {
-    number: '01',
-    title: 'Foundation',
-    detail: 'Project setup, design system, navigation, and starter dashboard.',
-    current: true,
-  },
-  {
-    number: '02',
-    title: 'Mission configuration',
-    detail:
-      'Mission Builder, parameters, custom objectives, and local persistence.',
-  },
-  {
-    number: '03',
-    title: 'Mission control',
-    detail:
-      'Interactive map, telemetry, incident response, and deterministic demo.',
-  },
-  {
-    number: '04',
-    title: 'Mission results',
-    detail:
-      'Objective evaluation, after-action reports, and performance charts.',
-  },
-]
+import { ErrorNotice, Loading } from '../components/ui/Feedback'
+import { api } from '../services/api'
+import {
+  keys,
+  useProviders,
+  useReadiness,
+  useSettings,
+} from '../services/queries'
+import { finite } from '../features/missions/validation'
+import type { Preferences, Settings as SettingsData } from '../types/mission'
+import { useDirtyGuard } from '../features/missions/useDirtyGuard'
+const schema = z.object({
+  ai_provider: z.enum(['auto', 'gemini', 'qwen', 'mock']),
+  demo_mode: z.boolean(),
+  simulation_speed: finite.positive().max(3600),
+})
 export default function Settings() {
+  const settings = useSettings(),
+    readiness = useReadiness(),
+    providers = useProviders()
   return (
-    <div className="page settings-page">
+    <div className="page cg-stack">
       <PageHeading
-        eyebrow="PROJECT FOUNDATION"
+        eyebrow="WORKSPACE PREFERENCES"
         title="Workspace settings"
-        description="Initial setup is ready. Advanced preferences come later."
-      >
-        <Badge>STARTER</Badge>
-      </PageHeading>
-      <div className="settings-grid">
-        <section className="panel">
-          <PanelTitle title="Project setup" icon={Code2} />
-          <dl className="settings-list">
-            <div>
-              <dt>Framework</dt>
-              <dd>React + TypeScript</dd>
-            </div>
-            <div>
-              <dt>Build tool</dt>
-              <dd>Vite</dd>
-            </div>
-            <div>
-              <dt>Styles & icons</dt>
-              <dd>Tailwind CSS + Lucide</dd>
-            </div>
-            <div>
-              <dt>Navigation</dt>
-              <dd>React Router</dd>
-            </div>
-            <div>
-              <dt>Backend connection</dt>
-              <dd>
-                <Badge>Not configured</Badge>
-              </dd>
-            </div>
-          </dl>
-        </section>
-        <section className="panel">
-          <PanelTitle title="Repository" icon={GitBranch} />
-          <div className="settings-content">
-            <span className="eyebrow">APOLLO / COMMANDGRID</span>
-            <h3 className="repo-title">A clean starting point.</h3>
-            <p>
-              Source is organized into pages, reusable layout components, UI
-              primitives, typed mission models, and fictional demo data.
-            </p>
-            <a
-              className="button repo-link"
-              href="https://github.com/SebLot1297/Apollo"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <GitBranch size={15} />
-              Open GitHub repository
-            </a>
+        description="Server-owned preferences, infrastructure readiness, and provider availability."
+      />
+      <ErrorNotice
+        error={settings.error ?? readiness.error ?? providers.error}
+        retry={() => {
+          void settings.refetch()
+          void readiness.refetch()
+          void providers.refetch()
+        }}
+      />
+      {settings.isPending ? (
+        <Loading />
+      ) : (
+        settings.data && (
+          <div className="cg-grid">
+            <PreferencesForm initial={settings.data} />
+            <section className="panel">
+              <PanelTitle title="Backend readiness" />
+              <dl className="cg-facts cg-content">
+                <dt>Database engine</dt>
+                <dd>{settings.data.database.engine}</dd>
+                <dt>Database status</dt>
+                <dd>{settings.data.database.status}</dd>
+                <dt>Storage mode</dt>
+                <dd>
+                  {settings.data.database.engine.startsWith('sqlite')
+                    ? 'SQLite local-demo; no Timescale verification implied.'
+                    : 'PostgreSQL / TimescaleDB'}
+                </dd>
+                <dt>Backend</dt>
+                <dd>{readiness.data?.status ?? 'Unverified'}</dd>
+                <dt>Simulation engine</dt>
+                <dd>
+                  {readiness.data?.simulation_engine_ready
+                    ? 'Ready'
+                    : 'Unavailable / unverified'}
+                </dd>
+                <dt>AI service</dt>
+                <dd>
+                  {readiness.data?.ai_service_ready
+                    ? 'Installed'
+                    : 'Part D unavailable'}
+                </dd>
+              </dl>
+            </section>
           </div>
-        </section>
-        <section className="panel settings-future">
-          <PanelTitle
-            title="Implementation roadmap"
-            icon={Layers}
-            meta="CURRENT SCOPE: FOUNDATION"
-          />
-          <ol className="roadmap">
-            {phases.map((phase) => (
-              <li key={phase.number}>
-                <span
-                  className={`roadmap-number ${phase.current ? 'cyan' : ''}`}
-                >
-                  {phase.number}
-                </span>
-                <div>
-                  <h3>{phase.title}</h3>
-                  <p>{phase.detail}</p>
+        )
+      )}
+      <section className="panel">
+        <PanelTitle
+          title="AI provider availability"
+          meta={
+            <button
+              className="button"
+              disabled={providers.isFetching}
+              onClick={() => void providers.refetch()}
+            >
+              Refresh provider status
+            </button>
+          }
+        />
+        {providers.isPending ? (
+          <Loading />
+        ) : (
+          <ul className="cg-list">
+            {providers.data?.map((status) => (
+              <li key={status.provider}>
+                <div className="cg-actions spread">
+                  <strong>
+                    {status.provider} · {status.model}
+                  </strong>
+                  <Badge tone={status.available ? 'green' : 'amber'}>
+                    {status.available ? 'Available' : 'Unavailable'}
+                  </Badge>
                 </div>
-                <Badge tone={phase.current ? 'green' : 'neutral'}>
-                  {phase.current ? 'CURRENT' : 'LATER'}
-                </Badge>
+                <span>
+                  Configured: {status.configured ? 'Yes' : 'No'} · Available:{' '}
+                  {status.available ? 'Yes' : 'No'}
+                </span>
+                <p className="cg-help">{status.detail}</p>
               </li>
             ))}
-          </ol>
-        </section>
-        <section className="panel settings-future">
-          <PanelTitle title="Preferences" icon={Settings2} />
-          <p className="panel-empty">
-            Theme controls and workspace personalization will be added in a
-            later phase.
-          </p>
-        </section>
-      </div>
+          </ul>
+        )}
+        <p className="cg-help cg-content">
+          Configured does not imply available. Provider secrets are never
+          returned or displayed. Core simulation needs no AI key or GPU.
+        </p>
+      </section>
     </div>
+  )
+}
+function PreferencesForm({ initial }: { initial: SettingsData }) {
+  const client = useQueryClient(),
+    [error, setError] = useState<unknown>(null),
+    [saved, setSaved] = useState(false)
+  const form = useForm<Preferences>({
+    defaultValues: {
+      ai_provider: initial.ai_provider,
+      demo_mode: initial.demo_mode,
+      simulation_speed: initial.simulation_speed,
+    },
+    resolver: zodResolver(schema),
+  })
+  useDirtyGuard(form.formState.isDirty)
+  return (
+    <form
+      className="panel cg-content cg-form"
+      noValidate
+      onSubmit={form.handleSubmit(async (values) => {
+        setError(null)
+        setSaved(false)
+        try {
+          const result = await api.saveSettings(values)
+          client.setQueryData(keys.settings, () => result)
+          await client.invalidateQueries({ queryKey: keys.providers })
+          form.reset(values)
+          setSaved(true)
+        } catch (failure) {
+          setError(failure)
+        }
+      })}
+    >
+      <h2 className="cg-section-title">Preferences</h2>
+      <ErrorNotice error={error} />
+      {saved && (
+        <p className="cg-notice success" role="status">
+          Preferences saved to the server.
+        </p>
+      )}
+      <label className="cg-field">
+        <span>Preferred AI provider</span>
+        <select {...form.register('ai_provider')}>
+          <option value="auto">Automatic</option>
+          <option value="gemini">Gemini</option>
+          <option value="qwen">Qwen</option>
+          <option value="mock">Mock / demo</option>
+        </select>
+      </label>
+      <label className="cg-check">
+        <input type="checkbox" {...form.register('demo_mode')} />
+        Demo mode
+      </label>
+      <label className="cg-field">
+        <span>Future-run simulation speed</span>
+        <input
+          type="number"
+          step="any"
+          {...form.register('simulation_speed', { valueAsNumber: true })}
+          aria-invalid={Boolean(form.formState.errors.simulation_speed)}
+        />
+        <small>
+          Finite speed greater than 0 and at most 3600. Affects future launches;
+          existing runs retain their speed.
+        </small>
+        {form.formState.errors.simulation_speed && (
+          <span className="cg-field-error" role="alert">
+            {form.formState.errors.simulation_speed.message}
+          </span>
+        )}
+      </label>
+      <button
+        className="button primary"
+        disabled={form.formState.isSubmitting}
+        type="submit"
+      >
+        {form.formState.isSubmitting ? 'Saving…' : 'Save preferences'}
+      </button>
+    </form>
   )
 }

@@ -1,55 +1,133 @@
+import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Activity,
-  ArrowRight,
-  ArrowUpRight,
-  Clock3,
   FileChartColumn,
   FolderOpen,
   Radio,
   ShieldCheck,
-  Target,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { Badge, PageHeading, PanelTitle } from '../components/ui/Primitives'
+import { Empty, ErrorNotice, Loading } from '../components/ui/Feedback'
+import { useConfirm } from '../components/ui/confirmation'
 import ScenarioMap from '../components/dashboard/ScenarioMap'
-import { demoMission as mission } from '../data/demoMission'
-import { localDate } from '../utils/format'
-const stats = [
-  {
-    label: 'DEMO MISSIONS',
-    value: '01',
-    detail: 'One fictional scenario to explore',
-    icon: FolderOpen,
-  },
-  {
-    label: 'COMPLETED SIMULATIONS',
-    value: '00',
-    detail: 'Execution planned for a later phase',
-    icon: ShieldCheck,
-  },
-  {
-    label: 'ACTIVE SIMULATION',
-    value: '00',
-    detail: 'Workspace on standby',
-    icon: Radio,
-  },
-  {
-    label: 'LAST MISSION RESULT',
-    value: '—',
-    detail: 'No completed exercises yet',
-    icon: FileChartColumn,
-  },
-]
+import { api } from '../services/api'
+import {
+  cacheState,
+  invalidateMission,
+  keys,
+  useMissions,
+  useReports,
+  useRuns,
+  useSettings,
+} from '../services/queries'
+import { parseState } from '../services/state'
+import { useWorkspace } from '../store/workspace'
+import { isTerminal } from '../types/mission'
+import { elapsed, localDate } from '../utils/format'
+
 export default function Dashboard() {
+  const client = useQueryClient(),
+    navigate = useNavigate(),
+    confirm = useConfirm()
+  const missions = useMissions(),
+    runs = useRuns(client),
+    reports = useReports(),
+    settings = useSettings()
+  const [seed, setSeed] = useState('42'),
+    [error, setError] = useState<unknown>(null)
+  const active = runs.data?.find((run) => !isTerminal(run.status)),
+    latest = reports.data?.[0]
+  const launch = useMutation({
+    mutationFn: async (missionId: string) => {
+      const randomSeed = Number(seed)
+      if (
+        !seed.trim() ||
+        !Number.isInteger(randomSeed) ||
+        randomSeed < -2147483648 ||
+        randomSeed > 2147483647
+      )
+        throw new Error(
+          'Random seed must be an integer between -2147483648 and 2147483647.',
+        )
+      if (!settings.data)
+        throw new Error('Load server preferences before launching.')
+      return parseState(
+        await api.createRun(
+          missionId,
+          randomSeed,
+          settings.data.simulation_speed,
+        ),
+      )
+    },
+    onSuccess: (state) => {
+      cacheState(client, state.run_id, state)
+      useWorkspace.getState().selectRun(state.run_id)
+      void client.invalidateQueries({ queryKey: keys.runs })
+      navigate(`/mission-control/${state.run_id}`)
+    },
+    onError: (failure) => {
+      setError(failure)
+      void client.invalidateQueries({ queryKey: keys.runs })
+    },
+  })
+  const remove = useMutation({
+    mutationFn: api.deleteMission,
+    onSuccess: (_, id) => void invalidateMission(client, id),
+    onError: setError,
+  })
+  const stats = [
+    { label: 'SAVED MISSIONS', value: missions.data?.length, icon: FolderOpen },
+    {
+      label: 'TERMINAL RUNS',
+      value: runs.data?.filter((run) => isTerminal(run.status)).length,
+      icon: ShieldCheck,
+    },
+    {
+      label: 'ACTIVE SIMULATION',
+      value: runs.data ? (active ? 1 : 0) : undefined,
+      icon: Radio,
+    },
+    {
+      label: 'LATEST RESULT',
+      value: latest
+        ? latest.success
+          ? 'Success'
+          : 'Unsuccessful'
+        : reports.data
+          ? '—'
+          : undefined,
+      icon: FileChartColumn,
+    },
+  ]
   return (
-    <div className="page dashboard-page">
+    <div className="page dashboard-page cg-stack">
       <PageHeading
         eyebrow="OPERATIONS OVERVIEW"
         title="Command dashboard"
-        description="Your missions. Your objectives. Your command."
+        description="Saved configurations, real server activity, and persisted results."
       >
-        <Badge tone="cyan">FOUNDATION PREVIEW</Badge>
+        <Link className="button primary" to="/mission-builder">
+          Create mission
+        </Link>
       </PageHeading>
+      <ErrorNotice
+        error={
+          error ??
+          missions.error ??
+          runs.error ??
+          reports.error ??
+          settings.error
+        }
+        retry={() => {
+          setError(null)
+          void missions.refetch()
+          void runs.refetch()
+          void reports.refetch()
+          void settings.refetch()
+        }}
+      />
       <div className="stats-grid">
         {stats.map((stat) => (
           <div className="stat-card" key={stat.label}>
@@ -57,154 +135,198 @@ export default function Dashboard() {
               {stat.label}
               <stat.icon size={17} />
             </div>
-            <div className="stat-value">{stat.value}</div>
-            <div className="stat-detail">{stat.detail}</div>
+            <div className="stat-value">{stat.value ?? '…'}</div>
+            <div className="stat-detail">Confirmed backend data</div>
           </div>
         ))}
       </div>
-      <div className="dashboard-middle">
-        <section className="panel operation-preview">
-          <PanelTitle
-            icon={Activity}
-            title="Demonstration scenario"
-            meta={<Badge tone="cyan">PREVIEW</Badge>}
-          />
-          <div className="preview-mission">
-            <div>
-              <div className="eyebrow">COMMUNICATIONS RECOVERY / NH–04</div>
-              <h2>{mission.name}</h2>
-              <p>{mission.description}</p>
+      <div className="cg-grid">
+        <section className="panel">
+          <PanelTitle title="Active simulation" icon={Activity} />
+          {active ? (
+            <div className="cg-content cg-stack">
+              <h2 className="cg-section-title">{active.mission.name}</h2>
+              <div className="cg-actions">
+                <Badge tone="green">{active.status}</Badge>
+                <span className="mono">
+                  T+ {elapsed(active.elapsed_time_seconds)}
+                </span>
+              </div>
+              <Link
+                className="button primary"
+                to={`/mission-control/${active.run_id}`}
+              >
+                Open active run
+              </Link>
+              <ScenarioMap
+                facilities={active.facilities}
+                teams={active.support_teams}
+              />
             </div>
-            <Link className="button" to="/mission-builder">
-              Mission Builder
-              <ArrowUpRight size={15} />
+          ) : runs.isPending ? (
+            <Loading />
+          ) : (
+            <Empty title="No active simulation">
+              <p>
+                Launch a saved mission, then explicitly start it in Mission
+                Control.
+              </p>
+            </Empty>
+          )}
+        </section>
+        <section className="panel">
+          <PanelTitle title="Latest saved result" />
+          <div className="cg-content cg-stack">
+            {latest ? (
+              <>
+                <h2 className="cg-section-title">{latest.mission.name}</h2>
+                <Badge tone={latest.success ? 'green' : 'red'}>
+                  {latest.success ? 'Success' : 'Unsuccessful'}
+                </Badge>
+                <p className="cg-help">{latest.summary}</p>
+                <Link className="button" to={`/reports/${latest.run_id}`}>
+                  Open latest report
+                </Link>
+              </>
+            ) : reports.isPending ? (
+              <Loading />
+            ) : (
+              <p className="cg-help">
+                No saved reports yet. Completed, failed, and terminated runs
+                produce reports.
+              </p>
+            )}
+            <Link className="button" to="/reports">
+              Browse reports and compare runs
             </Link>
           </div>
-          <ScenarioMap />
-          <div className="preview-bottom">
-            <span>
-              <Target size={14} />
-              {mission.objectives.length} sample objectives
-            </span>
-            <span>
-              <Clock3 size={14} />
-              {mission.durationHours}h mission window
-            </span>
-            <span className="mono">SCENARIO PREVIEW</span>
-          </div>
-        </section>
-        <section className="panel readiness-panel">
-          <PanelTitle title="Workspace foundation" meta="PHASE 01" />
-          <div className="readiness-graphic">
-            <div className="readiness-ring">
-              <ShieldCheck size={38} />
-            </div>
-            <span className="eyebrow">FOUNDATION ESTABLISHED</span>
-            <h3>Prepare to command.</h3>
-            <p>
-              Explore the workspace. Mission configuration and simulation will
-              follow in the next phases.
-            </p>
-          </div>
-          <Link className="quick-action" to="/mission-builder">
-            <span className="quick-icon">
-              <Target size={17} />
-            </span>
-            <span>
-              <strong>Mission Builder</strong>
-              <small>Next: configuration & objectives</small>
-            </span>
-            <ArrowRight size={17} />
-          </Link>
-          <Link className="quick-action" to="/settings">
-            <span className="quick-icon">
-              <FileChartColumn size={17} />
-            </span>
-            <span>
-              <strong>View project roadmap</strong>
-              <small>See what comes next</small>
-            </span>
-            <ArrowRight size={17} />
-          </Link>
         </section>
       </div>
-      <section className="mission-library">
+      <section className="mission-library cg-stack">
         <div className="section-heading">
           <div>
             <h2>
-              Mission library <span className="count-chip">01</span>
+              Mission library{' '}
+              <span className="count-chip">{missions.data?.length ?? '…'}</span>
             </h2>
-            <p>A fictional starting point for your future exercises.</p>
+            <p>
+              Fictional Communications Recovery configurations saved to the
+              server.
+            </p>
           </div>
-          <Badge>DEMO CONFIGURATION</Badge>
+          <label className="cg-field">
+            <span>Future run random seed</span>
+            <input
+              type="number"
+              value={seed}
+              onChange={(event) => setSeed(event.target.value)}
+            />
+          </label>
         </div>
-        <div className="mission-cards">
-          <article className="mission-card">
-            <div className="mission-card-top">
-              <span className="mission-glyph">
-                <Radio size={22} />
-              </span>
-              <Badge tone="cyan">SAMPLE MISSION</Badge>
-            </div>
-            <span className="eyebrow">MISSION 001</span>
-            <h3>{mission.name}</h3>
-            <p>{mission.category}</p>
-            <div className="mission-card-meta">
-              <span>
-                <Target size={13} />
-                {mission.objectives.length} objectives
-              </span>
-              <span>
-                <Clock3 size={13} />
-                {mission.durationHours}h
-              </span>
-            </div>
-            <div className="mission-card-footer">
-              <span>Seeded {localDate(mission.modifiedAt)}</span>
-              <Link
-                className="icon-button"
-                aria-label="View Mission Builder"
-                to="/mission-builder"
+        {missions.isPending ? (
+          <Loading />
+        ) : !missions.data?.length ? (
+          <Empty title="No saved missions">
+            <Link className="button" to="/mission-builder">
+              Create your first mission
+            </Link>
+          </Empty>
+        ) : (
+          <div className="cg-grid">
+            {missions.data.map((mission) => (
+              <article
+                className="panel cg-run-card"
+                key={mission.id}
+                aria-label={`Mission ${mission.name}`}
               >
-                <ArrowUpRight size={18} />
-              </Link>
-            </div>
-          </article>
-          <div className="new-mission-card planned-card">
-            <span>
-              <Target size={23} />
-            </span>
-            <strong>Your next mission starts here.</strong>
-            <small>Mission creation is planned for Phase 02.</small>
+                <div className="cg-actions spread">
+                  <Radio size={20} />
+                  <Badge tone="cyan">Communications Recovery</Badge>
+                </div>
+                <h3>{mission.name}</h3>
+                <p className="cg-help">{mission.description}</p>
+                <span className="cg-help">
+                  {mission.duration_seconds} seconds ·{' '}
+                  {mission.parameters.team_count} teams ·{' '}
+                  {mission.objectives.length} objectives · Updated{' '}
+                  {localDate(mission.updated_at)}
+                </span>
+                <div className="cg-actions">
+                  <Link
+                    className="button"
+                    to={`/mission-builder/${mission.id}`}
+                  >
+                    Edit
+                  </Link>
+                  <Link className="button" to={`/objectives/${mission.id}`}>
+                    Objectives
+                  </Link>
+                  <Link
+                    className="button"
+                    to={`/mission-builder?clone=${mission.id}`}
+                  >
+                    Clone
+                  </Link>
+                  <button
+                    className="button ghost"
+                    disabled={remove.isPending}
+                    onClick={async () => {
+                      if (
+                        await confirm({
+                          title: 'Delete mission?',
+                          description: `Delete ${mission.name}? Historical reports remain available. Missions with an active run cannot be deleted.`,
+                          confirmText: 'Delete mission',
+                        })
+                      )
+                        remove.mutate(mission.id)
+                    }}
+                  >
+                    Delete
+                  </button>
+                  {active ? (
+                    <Link
+                      className="button"
+                      to={`/mission-control/${active.run_id}`}
+                    >
+                      Open active run
+                    </Link>
+                  ) : (
+                    <button
+                      className="button primary"
+                      disabled={launch.isPending || !settings.data}
+                      onClick={() => {
+                        if (!launch.isPending) {
+                          setError(null)
+                          launch.mutate(mission.id)
+                        }
+                      }}
+                    >
+                      Launch
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
-        </div>
+        )}
       </section>
-      <div className="dashboard-bottom">
-        <section className="panel">
-          <PanelTitle title="Recent activity" meta="WORKSPACE SETUP" />
-          <div className="foundation-activity">
-            <span className="live-dot" />
-            <div>
-              <strong>CommandGrid workspace initialized</strong>
-              <small>
-                Project setup, navigation, and the initial dashboard are in
-                place.
-              </small>
-            </div>
-            <Badge tone="green">READY</Badge>
-          </div>
-        </section>
-        <section className="panel">
-          <PanelTitle title="Recent exercises" meta="00 COMPLETED" />
-          <div className="recent-empty">
-            <FileChartColumn size={24} />
-            <span>
-              No completed exercises yet.
-              <small>Results will appear once simulation is implemented.</small>
-            </span>
-          </div>
-        </section>
-      </div>
+      <section className="panel">
+        <PanelTitle title="Recent run activity" />
+        <ul className="cg-list">
+          {(active ?? runs.data?.[0])?.events
+            .slice(-5)
+            .reverse()
+            .map((event) => (
+              <li key={event.id}>
+                <span className="cg-event-time">
+                  T+ {elapsed(event.simulated_time_seconds)}
+                </span>
+                <p>{event.message}</p>
+              </li>
+            ))}
+        </ul>
+        {!runs.data?.length && <p className="cg-empty">No run activity yet.</p>}
+      </section>
     </div>
   )
 }

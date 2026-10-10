@@ -1,109 +1,102 @@
+import { useId, useState } from 'react'
 import { Building2, Radio, Users, Zap } from 'lucide-react'
-const markers = [
-  { name: 'North Haven', x: 24, y: 25, icon: Building2 },
-  { name: 'Relay Station 04', x: 56, y: 35, icon: Radio },
-  { name: 'Meridian Relief Hub', x: 73, y: 66, icon: Building2 },
-  { name: 'Eastbank Power', x: 30, y: 75, icon: Zap },
-]
-export default function ScenarioMap() {
+import type { Facility, SupportTeam } from '../../types/mission'
+export default function ScenarioMap({
+  facilities,
+  teams,
+}: {
+  facilities: Facility[]
+  teams: SupportTeam[]
+}) {
+  const gridId = useId(),
+    [selected, setSelected] = useState<string | null>(null)
+  const markers = [
+    ...facilities.map((f) => ({
+      ...f,
+      type: 'facility',
+      icon: f.kind === 'relay' ? Radio : f.kind === 'power' ? Zap : Building2,
+    })),
+    ...teams.map((team) => ({ ...team, type: 'team', icon: Users })),
+  ]
+  const current = markers.find((marker) => marker.id === selected)
   return (
-    <div
-      className="operational-map map-compact"
-      role="img"
-      aria-label="Fictional North Haven district: facilities connected to Relay Station 04, with four support teams."
-    >
-      <svg
-        className="terrain"
-        viewBox="0 0 800 480"
-        preserveAspectRatio="none"
-        aria-hidden="true"
+    <>
+      <div
+        className="operational-map map-compact cg-map"
+        role="group"
+        aria-label="Fictional facility and support team map"
       >
-        <defs>
-          <pattern
-            id="grid"
-            width="40"
-            height="40"
-            patternUnits="userSpaceOnUse"
-          >
-            <path
-              d="M40 0H0V40"
-              fill="none"
-              stroke="#264342"
-              strokeWidth=".7"
-            />
-          </pattern>
-        </defs>
-        <rect width="800" height="480" fill="url(#grid)" />
-        <g fill="none" stroke="#294844" strokeWidth="1.5" opacity=".6">
-          <path d="M-30 330C70 210 96 365 160 228S250 178 280 80 364-10 403-50M-30 350C75 245 120 390 180 240S273 185 302 86 380 5 430-30M-20 377C75 270 151 405 202 270S300 190 326 104 420 35 452-20M480 520C385 420 521 370 489 280S538 203 613 120 667 60 820 58M515 520C433 430 557 364 520 278S567 214 640 137 699 90 820 84M540 515C464 430 591 360 552 278S600 233 663 153 722 127 823 111" />
-        </g>
-        <path
-          d="M0 440C183 303 198 383 325 319S442 273 499 179 620 192 800 5"
-          fill="none"
-          stroke="#25464c"
-          strokeWidth="20"
-          opacity=".6"
-        />
-        <path
-          d="M192 115L448 168 576 326 240 365 192 115M448 168L240 365"
-          fill="none"
-          stroke="#497d72"
-          strokeWidth="1.2"
-          strokeDasharray="5 7"
-        />
-        <text
-          x="35"
-          y="30"
-          fill="#57766e"
-          fontSize="10"
-          fontFamily="monospace"
-          letterSpacing="3"
+        <svg
+          className="terrain"
+          viewBox="0 0 800 480"
+          preserveAspectRatio="none"
+          aria-hidden="true"
         >
-          NORTH HAVEN DISTRICT
-        </text>
-      </svg>
-      <div className="map-coordinate coord-top mono">
-        SCENARIO PREVIEW / FICTIONAL TERRAIN
-      </div>
-      {markers.map(({ name, x, y, icon: Icon }) => (
-        <div
-          key={name}
-          className="map-marker"
-          style={{ left: `${x}%`, top: `${y}%` }}
-        >
-          <span className="marker-symbol">
-            <Icon size={15} />
-          </span>
-          <span className="marker-label">{name}</span>
+          <defs>
+            <pattern
+              id={gridId}
+              width="40"
+              height="40"
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                d="M40 0H0V40"
+                fill="none"
+                stroke="#264342"
+                strokeWidth=".7"
+              />
+            </pattern>
+          </defs>
+          <rect width="800" height="480" fill={`url(#${gridId})`} />
+          <g fill="none" stroke="#294844" strokeWidth="1.5" opacity=".6">
+            <path d="M-30 330C70 210 96 365 160 228S250 178 280 80 364-10 403-50M-30 350C75 245 120 390 180 240S273 185 302 86 380 5 430-30M-20 377C75 270 151 405 202 270S300 190 326 104 420 35 452-20M480 520C385 420 521 370 489 280S538 203 613 120 667 60 820 58M515 520C433 430 557 364 520 278S567 214 640 137 699 90 820 84M540 515C464 430 591 360 552 278S600 233 663 153 722 127 823 111" />
+          </g>
+          <path
+            d="M0 440C183 303 198 383 325 319S442 273 499 179 620 192 800 5"
+            fill="none"
+            stroke="#25464c"
+            strokeWidth="20"
+            opacity=".6"
+          />
+        </svg>
+        <div className="map-coordinate coord-top mono">
+          FICTIONAL TERRAIN · SYNTHETIC COORDINATES 0–100
         </div>
-      ))}
-      {[22, 35, 48, 61].map((x, i) => (
-        <div
-          key={x}
-          className="map-marker marker-team"
-          style={{ left: `${x}%`, top: '48%' }}
-        >
-          <span className="marker-symbol">
-            <Users size={10} />
-          </span>
-          <span className="marker-label">Support 0{i + 1}</span>
+        <div className="map-plot">
+          {markers.map(({ id, name, x, y, status, type, icon: Icon }) => (
+            <button
+              key={id}
+              className={`map-marker ${type === 'team' ? 'marker-team' : ''} ${status === 'offline' ? 'marker-critical' : status === 'degraded' ? 'marker-alert' : ''} ${id === selected ? 'selected' : ''}`}
+              style={{ left: `${x}%`, top: `${y}%` }}
+              aria-label={`${name}: ${status}, coordinates ${x}, ${y}`}
+              aria-pressed={id === selected}
+              onClick={() => setSelected(id)}
+            >
+              <span className="marker-symbol">
+                <Icon size={type === 'team' ? 12 : 15} />
+              </span>
+              <span className="marker-label">{name}</span>
+            </button>
+          ))}
         </div>
-      ))}
-      <div className="map-legend">
-        <span>
-          <i className="legend-square" />
-          Facility
-        </span>
-        <span>
-          <i className="legend-circle" />
-          Support team
-        </span>
-        <span>
-          <i className="legend-line" />
-          Comms link
-        </span>
-        <span className="map-preview-label">STATIC PREVIEW</span>
+        <div className="map-legend">
+          <span>
+            <i className="legend-square" />
+            Facility
+          </span>
+          <span>
+            <i className="legend-circle" />
+            Support team
+          </span>
+          <span>Green: operational · Amber: degraded · Red: offline</span>
+          <span>Positions from saved/server state</span>
+        </div>
       </div>
-    </div>
+      <div className="cg-map-selection" aria-live="polite">
+        {current
+          ? `${current.name} · ${current.status} · coordinates (${current.x}, ${current.y})`
+          : 'Select a facility or team with mouse or keyboard to inspect its actual coordinates and status.'}
+      </div>
+    </>
   )
 }
