@@ -27,6 +27,10 @@ TASKS = {
     "generate_report": "Describe the recorded after-action report. Preserve final metrics, "
     "objective results, elapsed time and success exactly as supplied. "
     "Do not recalculate or override the evaluator. Return narrative text only.",
+    "generate_recovery_strategy": "Explain the supplied recovery plan: priorities, resource "
+    "tradeoffs, and objective risks. Use only the recorded state and steps as evidence. "
+    "Suggestions require explicit operator action; never claim a command ran and never "
+    "change or predict numerical outcomes. Return narrative text only.",
 }
 
 

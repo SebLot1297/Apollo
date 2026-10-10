@@ -1,5 +1,7 @@
 # Part C — Frontend and Browser Experience Implementation Plan
 
+The expanded plan for the integrated A/B baseline is [CommandGrid Part C — Complete Frontend Implementation Plan](../2026-10-10-commandgrid-part-c-complete.md). Use that document for the current full coding-agent assignment; the original outline below is retained for context.
+
 > **For agentic workers:** Use the executing-plans skill to work through the checkboxes. This assignment is one workstream in the CommandGrid parallel plan. Request coordinator review when changing a shared interface.
 
 **Goal:** Connect mission design, live recovery operations and persisted reports in the existing polished UI.

@@ -195,12 +195,28 @@ export default function Commands({
             </>
           )}
         </div>
+        {['created', 'running', 'paused'].includes(state.status) && (
+          <div className="cg-actions" aria-label="Simulation speed">
+            <span className="cg-help">Speed {state.time_multiplier}×</span>
+            {[1, 5, 10, 30, 60, 120].map((preset) => (
+              <button
+                key={preset}
+                className={`button${state.time_multiplier === preset ? ' primary' : ''}`}
+                aria-pressed={state.time_multiplier === preset}
+                disabled={blocked || state.time_multiplier === preset}
+                onClick={() => void act('set_speed', { time_multiplier: preset })}
+              >
+                {preset}×
+              </button>
+            ))}
+          </div>
+        )}
         <fieldset
           disabled={blocked || state.status !== 'running'}
           className="cg-form"
         >
           <legend className="cg-help">
-            Recovery controls are available only while running.
+            Synthetic incident injection is available only while running.
           </legend>
           <label className="cg-field">
             <span>Synthetic incident kind</span>
@@ -224,6 +240,19 @@ export default function Commands({
             >
               Trigger incident
             </button>
+          </div>
+        </fieldset>
+        <fieldset
+          disabled={
+            blocked || !['running', 'paused'].includes(state.status)
+          }
+          className="cg-form"
+        >
+          <legend className="cg-help">
+            Recovery actions work while running or paused; paused changes do not
+            advance simulated time.
+          </legend>
+          <div className="cg-actions">
             <button
               className="button"
               disabled={!incident || incident.status !== 'active'}

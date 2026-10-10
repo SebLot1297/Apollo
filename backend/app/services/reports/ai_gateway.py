@@ -3,11 +3,10 @@ from collections import deque
 from time import monotonic
 from typing import Literal
 
-from fastapi import HTTPException
-from pydantic import BaseModel, ConfigDict, Field, StrictBool
-
 from app.core.errors import MissingError, UnavailableError
 from app.schemas.mission import MissionConfiguration, MissionObjective
+from fastapi import HTTPException
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 
 class Envelope(BaseModel):
@@ -27,8 +26,9 @@ class TextData(BaseModel):
 
 
 class AIGateway:
-    def __init__(self, store, settings, service=None):
+    def __init__(self, store, settings, service=None, controller=None):
         self.store, self.config, self.service = store, settings, service
+        self.controller = controller
         self.recent = deque()
         self.lock = asyncio.Lock()
         self.semaphore = asyncio.Semaphore(settings.ai_max_concurrency)
@@ -55,7 +55,14 @@ class AIGateway:
         ]
 
     async def execute(self, task, body, preferences):
-        if task not in {"generate_mission", "generate_objectives", "explain_incident", "chat", "generate_report"}:
+        if task not in {
+            "generate_mission",
+            "generate_objectives",
+            "explain_incident",
+            "chat",
+            "generate_report",
+            "generate_recovery_strategy",
+        }:
             raise HTTPException(404, "AI task not found")
         async with self.lock:
             current = monotonic()
@@ -129,7 +136,7 @@ class AIGateway:
             if not mission:
                 raise MissingError("Mission not found")
             context["mission"] = mission.model_dump(mode="json")
-        if task in {"chat", "explain_incident", "generate_report"}:
+        if task in {"chat", "explain_incident", "generate_report", "generate_recovery_strategy"}:
             if body.run_id is None:
                 raise HTTPException(422, "run_id is required")
             state = await asyncio.to_thread(self.store.get_run, str(body.run_id))
@@ -172,6 +179,24 @@ class AIGateway:
                     )
                 }
                 prompt = "Describe this after-action report. Keep numerical outcomes unchanged."
+            if task == "generate_recovery_strategy":
+                # Guidance is derived server-side from authoritative state; the model
+                # only explains priorities and tradeoffs and never changes outcomes.
+                plan = None
+                if self.controller is not None:
+                    try:
+                        plan = await self.controller.recovery_plan(str(body.run_id))
+                    except Exception:
+                        plan = None
+                context["recovery_plan"] = (
+                    plan.model_dump(mode="json")
+                    if plan is not None
+                    else {"steps": [], "objective_outlook": {"can_finish_successfully": False}}
+                )
+                prompt = (
+                    "Explain the supplied recovery plan: prioritise the steps, discuss resource "
+                    "tradeoffs, and note objective risks. Suggestions require explicit operator action."
+                )
         return prompt, context
 
     async def close(self):

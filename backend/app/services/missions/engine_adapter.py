@@ -22,7 +22,8 @@ class EngineAdapter:
         return native
 
     @staticmethod
-    def _public(native, previous=None):
+    def _public(native, previous=None, run_profile=None):
+        profile = run_profile or (previous.run_profile if previous else "standard")
         events = [event.model_copy(deep=True) for event in previous.events] if previous else []
         history = [sample.model_copy(deep=True) for sample in previous.history] if previous else []
         prior = previous.engine_snapshot if previous else {}
@@ -41,7 +42,7 @@ class EngineAdapter:
         sequence = max(native.sequence, event_sequence, previous.sequence + 1 if previous else 0)
         return MissionState(
             run_id=native.run_id, mission_id=native.mission_id, mission=native.mission,
-            status=native.status, elapsed_time_seconds=native.elapsed_time_seconds,
+            status=native.status, run_profile=profile, elapsed_time_seconds=native.elapsed_time_seconds,
             random_seed=native.random_seed, time_multiplier=native.time_multiplier, sequence=sequence,
             metrics=native.metrics, systems={
                 "communication_health": native.systems["communications"].health,
@@ -63,10 +64,13 @@ class EngineAdapter:
             engine_snapshot=native.model_dump(mode="json"),
         )
 
-    def create_state(self, mission, random_seed=42, run_id=None, time_multiplier=30):
-        return self._public(self.engine.create_state(
-            mission, random_seed=random_seed, run_id=run_id, time_multiplier=time_multiplier,
-        ))
+    def create_state(self, mission, random_seed=42, run_id=None, time_multiplier=30, run_profile="standard"):
+        return self._public(
+            self.engine.create_state(
+                mission, random_seed=random_seed, run_id=run_id, time_multiplier=time_multiplier,
+            ),
+            run_profile=run_profile,
+        )
 
     def apply_command(self, state, command_type, payload=None):
         return self._public(self.engine.apply_command(self._native(state), command_type, payload), state)
