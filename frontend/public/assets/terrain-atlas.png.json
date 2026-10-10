@@ -1,0 +1,7 @@
+{
+  "tool": "built-in image_gen",
+  "model": "unverified",
+  "reference": "output/mockups/a-spatial-atlas.png",
+  "purpose": "Fictional terrain backdrop; all interface elements implemented separately",
+  "prompt": "Use case: precise-object-edit. Edit target: the attached CommandGrid mockup A. Extract and clean ONLY its large left terrain map area, located at pixel rectangle x=0,y=132,width=1152,height=660 of the 1586x992 source. Produce a standalone landscape terrain backplate, approximately 1152:660 aspect ratio, edge to edge.\nPreserve the exact terrain world, relief shading, mineral blue-gray and pale sage colors, winding blue river, branching creeks, valley roads, mountains, and top-down camera framing of that rectangle. Fill occluded areas naturally so the terrain is continuous.\nRemove ALL interface and text: facility symbols and white label panels, amber and blue network connection lines, network icons, legend panel, compass, scale ruler, every place name, elevation, distance annotation and any typographic labels. Remove the dam icon. Do not include the navigation, mission strip, inspector, telemetry or activity footer from outside the target rectangle. The final image is only the same quiet detailed fictional terrain with natural river and roads. No interface, no markers, no text, no logos, no borders, no watermark. Do not invent a different map or dramatically alter river placement. Preserve the source map composition as closely as possible."
+}

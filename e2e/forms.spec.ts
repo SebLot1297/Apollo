@@ -352,7 +352,7 @@ test('coordinated required-objective swap saves atomically through the real miss
   await page.getByRole('button', { name: 'Save objectives' }).click()
   await response
   expect(writes).toEqual([
-    `http://127.0.0.1:5173/api/v1/missions/${mission.id}`,
+    new URL(`/api/v1/missions/${mission.id}`, page.url()).href,
   ])
   const saved = await (
     await request.get(`/api/v1/missions/${mission.id}`)

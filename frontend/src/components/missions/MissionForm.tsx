@@ -138,7 +138,7 @@ export default function MissionForm({
   ]
   return (
     <form
-      className="cg-form"
+      className="cg-form builder-layout"
       noValidate
       onSubmit={submit}
       aria-label={
@@ -147,296 +147,363 @@ export default function MissionForm({
           : 'Mission configuration form'
       }
     >
-      {!objectivesOnly && (
-        <ol className="cg-steps" aria-label="Builder steps">
-          {steps.map((label, index) => (
-            <li key={label}>
-              <button
-                type="button"
-                disabled={form.formState.isSubmitting}
-                onClick={() => setStep(index)}
-                aria-current={step === index ? 'step' : undefined}
-              >
-                {label}
-              </button>
-            </li>
-          ))}
-        </ol>
-      )}
-      <ErrorNotice error={error} />
-      {saved && !form.formState.isDirty && (
-        <div role="status" className="cg-notice success">
-          Configuration saved to the backend.{' '}
-          <Link to="/">View saved missions and launch from the dashboard</Link>
-        </div>
-      )}
-      {/* Keep every field mounted so an invalid hidden step can receive error focus. */}
-      {!objectivesOnly && (
-        <section
-          className="panel cg-content cg-stack"
-          hidden={step !== 0 && step !== 3}
-        >
-          <h2 className="cg-section-title">Mission information</h2>
-          <div className="cg-actions">
-            <span className="cg-help">
-              Template is an unsaved, editable configuration.
-            </span>
-            <button
-              type="button"
-              className="button"
-              disabled={form.formState.isSubmitting}
-              onClick={async () => {
-                if (
-                  form.formState.isDirty &&
-                  !(await confirm({
-                    title: 'Replace this draft?',
-                    description:
-                      'The template replaces unsaved mission fields.',
-                    confirmText: 'Use template',
-                  }))
-                )
-                  return
-                const template = signalRestoreTemplate()
-                apply(
-                  editing
-                    ? {
-                        ...template,
-                        id: baseline.id,
-                        created_at: baseline.created_at,
-                        facilities: baseline.facilities,
-                        support_teams: [],
-                        objectives: template.objectives.map(
-                          (objective, index) => ({
-                            ...objective,
-                            id: baseline.objectives[index]?.id ?? objective.id,
-                          }),
-                        ),
-                      }
-                    : template,
-                )
-              }}
-            >
-              Use Signal Restore template
-            </button>
-          </div>
-          <div className="cg-grid">
-            <Field form={form} path="name" label="Mission name">
-              <input
-                {...form.register('name')}
-                aria-invalid={Boolean(form.formState.errors.name)}
-              />
-            </Field>
-            <Field
-              form={form}
-              path="duration_seconds"
-              label="Duration (seconds)"
-            >
-              <input
-                type="number"
-                step="1"
-                {...form.register('duration_seconds', { valueAsNumber: true })}
-                aria-invalid={Boolean(form.formState.errors.duration_seconds)}
-              />
-              <small>60–86400 seconds. Six hours = 21600 seconds.</small>
-            </Field>
-            <label className="cg-field">
-              <span>Category</span>
-              <select
-                disabled={form.formState.isSubmitting}
-                {...form.register('category')}
-              >
-                {registry.categories.map((category) => (
-                  <option
-                    key={category.key}
-                    value={category.key}
-                    disabled={!category.available}
-                  >
-                    {category.label}
-                    {category.available ? '' : ' — unavailable'}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <Field form={form} path="description" label="Mission description">
-            <textarea {...form.register('description')} />
-          </Field>
-        </section>
-      )}
-      {!objectivesOnly && (
-        <section
-          className="panel cg-content cg-stack"
-          hidden={step !== 1 && step !== 3}
-        >
-          <h2 className="cg-section-title">Operational conditions</h2>
-          <div className="cg-grid">
-            {Object.entries(parameterLabels).map(([key, label]) => {
-              const path = `parameters.${key}` as FieldPath<MissionDraft>,
-                definition = registry.parameters[key]
-              return (
-                <Field
-                  key={key}
-                  form={form}
-                  path={path}
-                  label={`${label} (${key === 'team_count' ? 'count' : '%'})`}
-                >
-                  <input
-                    type="number"
-                    step={key === 'team_count' ? '1' : 'any'}
-                    {...form.register(path, { valueAsNumber: true })}
-                    aria-invalid={Boolean(
-                      form.getFieldState(path, form.formState).error,
-                    )}
-                  />
-                  <small>{definition?.effects}</small>
-                </Field>
-              )
-            })}
-          </div>
-          <label className="cg-check">
-            <input
-              type="checkbox"
-              disabled={form.formState.isSubmitting}
-              {...form.register('parameters.backup_power_enabled')}
-            />
-            Backup power enabled
-          </label>
-          <Field
-            form={form}
-            path="metadata_text"
-            label="Custom metadata (JSON scalar object)"
-          >
-            <textarea
-              className="mono"
-              {...form.register('metadata_text')}
-              aria-invalid={Boolean(form.formState.errors.metadata_text)}
-            />
-            <small>
-              Strings, booleans, finite numbers, and null only. Metadata has no
-              numerical effects and is never executed.
-            </small>
-          </Field>
-        </section>
-      )}
-      <section
-        className="panel cg-content cg-stack"
-        hidden={!objectivesOnly && step !== 2 && step !== 3}
-      >
-        <h2 className="cg-section-title">Measurable objectives</h2>
-        <ObjectiveEditor
-          form={form}
-          registry={registry}
-          disabled={form.formState.isSubmitting}
-        />
-      </section>
-      {!objectivesOnly && step === 3 && (
-        <section className="panel cg-content cg-review">
-          <h2 className="cg-section-title">Review configuration</h2>
-          <p className="cg-help">
-            {editing
-              ? 'Updates retain this mission identity. Running and historical snapshots remain independent.'
-              : 'This draft will become a saved mission only when you choose Save mission.'}
-          </p>
-          <dl>
-            <dt>Mission</dt>
-            <dd>{draft.name}</dd>
-            <dt>Category</dt>
-            <dd>Communications Recovery</dd>
-            <dt>Duration</dt>
-            <dd>{draft.duration_seconds} seconds</dd>
-            <dt>Teams</dt>
-            <dd>{draft.parameters.team_count}</dd>
-            <dt>Objectives</dt>
-            <dd>
-              {draft.objectives.length};{' '}
-              {draft.objectives.filter((o) => o.required).length} required
-            </dd>
-          </dl>
-          {editing && (
-            <div>
-              <h3 className="cg-section-title">Changes</h3>
-              <ul className="cg-help">
-                {[
-                  'name',
-                  'description',
-                  'duration_seconds',
-                  'parameters',
-                  'objectives',
-                ]
-                  .filter(
-                    (key) =>
-                      JSON.stringify(draft[key as keyof MissionDraft]) !==
-                      JSON.stringify(
-                        baseline[key as keyof MissionConfiguration],
-                      ),
-                  )
-                  .map((key) => (
-                    <li key={key}>{key.replaceAll('_', ' ')} changed</li>
-                  ))}
-                {draft.metadata_text !== toDraft(baseline).metadata_text && (
-                  <li>custom metadata changed</li>
-                )}
-              </ul>
-            </div>
-          )}
-        </section>
-      )}
-      <div className="cg-actions spread">
+      <div className="builder-form cg-stack">
         {!objectivesOnly && (
-          <>
-            <button
-              type="button"
-              className="button"
-              disabled={step === 0 || form.formState.isSubmitting}
-              onClick={() => setStep(step - 1)}
-            >
-              Previous step
-            </button>
-            {step < 3 && (
+          <ol className="cg-steps" aria-label="Builder steps">
+            {steps.map((label, index) => (
+              <li key={label}>
+                <button
+                  type="button"
+                  disabled={form.formState.isSubmitting}
+                  onClick={() => setStep(index)}
+                  aria-current={step === index ? 'step' : undefined}
+                >
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ol>
+        )}
+        <ErrorNotice error={error} />
+        {saved && !form.formState.isDirty && (
+          <div role="status" className="cg-notice success">
+            Configuration saved to the backend.{' '}
+            <Link to="/">
+              View saved missions and launch from the dashboard
+            </Link>
+          </div>
+        )}
+        {/* Keep every field mounted so an invalid hidden step can receive error focus. */}
+        {!objectivesOnly && (
+          <section
+            className="panel cg-content cg-stack"
+            hidden={step !== 0 && step !== 3}
+          >
+            <h2 className="cg-section-title">Mission information</h2>
+            <div className="cg-actions">
+              <span className="cg-help">
+                Template is an unsaved, editable configuration.
+              </span>
               <button
                 type="button"
-                className="button primary"
+                className="button"
                 disabled={form.formState.isSubmitting}
                 onClick={async () => {
-                  const fields: FieldPath<MissionDraft>[] =
-                    step === 0
-                      ? ['name', 'duration_seconds', 'category']
-                      : step === 1
-                        ? ['parameters', 'metadata_text']
-                        : ['objectives']
-                  if (await form.trigger(fields, { shouldFocus: true }))
-                    setStep(step + 1)
+                  if (
+                    form.formState.isDirty &&
+                    !(await confirm({
+                      title: 'Replace this draft?',
+                      description:
+                        'The template replaces unsaved mission fields.',
+                      confirmText: 'Use template',
+                    }))
+                  )
+                    return
+                  const template = signalRestoreTemplate()
+                  apply(
+                    editing
+                      ? {
+                          ...template,
+                          id: baseline.id,
+                          created_at: baseline.created_at,
+                          facilities: baseline.facilities,
+                          support_teams: [],
+                          objectives: template.objectives.map(
+                            (objective, index) => ({
+                              ...objective,
+                              id:
+                                baseline.objectives[index]?.id ?? objective.id,
+                            }),
+                          ),
+                        }
+                      : template,
+                  )
                 }}
               >
-                Next step
+                Use Signal Restore template
               </button>
-            )}
-          </>
+            </div>
+            <div className="cg-grid">
+              <Field form={form} path="name" label="Mission name">
+                <input
+                  {...form.register('name')}
+                  aria-invalid={Boolean(form.formState.errors.name)}
+                />
+              </Field>
+              <Field
+                form={form}
+                path="duration_seconds"
+                label="Duration (seconds)"
+              >
+                <input
+                  type="number"
+                  step="1"
+                  {...form.register('duration_seconds', {
+                    valueAsNumber: true,
+                  })}
+                  aria-invalid={Boolean(form.formState.errors.duration_seconds)}
+                />
+                <small>60–86400 seconds. Six hours = 21600 seconds.</small>
+              </Field>
+              <label className="cg-field">
+                <span>Category</span>
+                <select
+                  disabled={form.formState.isSubmitting}
+                  {...form.register('category')}
+                >
+                  {registry.categories.map((category) => (
+                    <option
+                      key={category.key}
+                      value={category.key}
+                      disabled={!category.available}
+                    >
+                      {category.label}
+                      {category.available ? '' : ' — unavailable'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <Field form={form} path="description" label="Mission description">
+              <textarea {...form.register('description')} />
+            </Field>
+          </section>
         )}
-        {(objectivesOnly || step === 3) && (
-          <button
-            type="submit"
-            className="button primary"
-            disabled={form.formState.isSubmitting}
+        {!objectivesOnly && (
+          <section
+            className="panel cg-content cg-stack"
+            hidden={step !== 1 && step !== 3}
           >
-            {form.formState.isSubmitting
-              ? 'Saving…'
-              : objectivesOnly
-                ? 'Save objectives'
-                : 'Save mission'}
-          </button>
+            <h2 className="cg-section-title">Operational conditions</h2>
+            <div className="cg-grid">
+              {Object.entries(parameterLabels).map(([key, label]) => {
+                const path = `parameters.${key}` as FieldPath<MissionDraft>,
+                  definition = registry.parameters[key]
+                return (
+                  <Field
+                    key={key}
+                    form={form}
+                    path={path}
+                    label={`${label} (${key === 'team_count' ? 'count' : '%'})`}
+                  >
+                    <input
+                      type="number"
+                      step={key === 'team_count' ? '1' : 'any'}
+                      {...form.register(path, { valueAsNumber: true })}
+                      aria-invalid={Boolean(
+                        form.getFieldState(path, form.formState).error,
+                      )}
+                    />
+                    <small>{definition?.effects}</small>
+                  </Field>
+                )
+              })}
+            </div>
+            <label className="cg-check">
+              <input
+                type="checkbox"
+                disabled={form.formState.isSubmitting}
+                {...form.register('parameters.backup_power_enabled')}
+              />
+              Backup power enabled
+            </label>
+            <Field
+              form={form}
+              path="metadata_text"
+              label="Custom metadata (JSON scalar object)"
+            >
+              <textarea
+                className="mono"
+                {...form.register('metadata_text')}
+                aria-invalid={Boolean(form.formState.errors.metadata_text)}
+              />
+              <small>
+                Strings, booleans, finite numbers, and null only. Metadata has
+                no numerical effects and is never executed.
+              </small>
+            </Field>
+          </section>
         )}
+        <section
+          className="panel cg-content cg-stack"
+          hidden={!objectivesOnly && step !== 2 && step !== 3}
+        >
+          <h2 className="cg-section-title">Measurable objectives</h2>
+          <ObjectiveEditor
+            form={form}
+            registry={registry}
+            disabled={form.formState.isSubmitting}
+          />
+        </section>
+        {!objectivesOnly && step === 3 && (
+          <section className="panel cg-content cg-review">
+            <h2 className="cg-section-title">Review configuration</h2>
+            <p className="cg-help">
+              {editing
+                ? 'Updates retain this mission identity. Running and historical snapshots remain independent.'
+                : 'This draft will become a saved mission only when you choose Save mission.'}
+            </p>
+            <dl>
+              <dt>Mission</dt>
+              <dd>{draft.name}</dd>
+              <dt>Category</dt>
+              <dd>Communications Recovery</dd>
+              <dt>Duration</dt>
+              <dd>
+                {Number.isFinite(draft.duration_seconds)
+                  ? `${draft.duration_seconds} seconds`
+                  : 'Not set'}
+              </dd>
+              <dt>Teams</dt>
+              <dd>
+                {Number.isFinite(draft.parameters.team_count)
+                  ? draft.parameters.team_count
+                  : 'Not set'}
+              </dd>
+              <dt>Objectives</dt>
+              <dd>
+                {draft.objectives.length};{' '}
+                {draft.objectives.filter((o) => o.required).length} required
+              </dd>
+            </dl>
+            {editing && (
+              <div>
+                <h3 className="cg-section-title">Changes</h3>
+                <ul className="cg-help">
+                  {[
+                    'name',
+                    'description',
+                    'duration_seconds',
+                    'parameters',
+                    'objectives',
+                  ]
+                    .filter(
+                      (key) =>
+                        JSON.stringify(draft[key as keyof MissionDraft]) !==
+                        JSON.stringify(
+                          baseline[key as keyof MissionConfiguration],
+                        ),
+                    )
+                    .map((key) => (
+                      <li key={key}>{key.replaceAll('_', ' ')} changed</li>
+                    ))}
+                  {draft.metadata_text !== toDraft(baseline).metadata_text && (
+                    <li>custom metadata changed</li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </section>
+        )}
+        <div className="cg-actions spread">
+          {!objectivesOnly && (
+            <>
+              <button
+                type="button"
+                className="button"
+                disabled={step === 0 || form.formState.isSubmitting}
+                onClick={() => setStep(step - 1)}
+              >
+                Previous step
+              </button>
+              {step < 3 && (
+                <button
+                  type="button"
+                  className="button primary"
+                  disabled={form.formState.isSubmitting}
+                  onClick={async () => {
+                    const fields: FieldPath<MissionDraft>[] =
+                      step === 0
+                        ? ['name', 'duration_seconds', 'category']
+                        : step === 1
+                          ? ['parameters', 'metadata_text']
+                          : ['objectives']
+                    if (await form.trigger(fields, { shouldFocus: true }))
+                      setStep(step + 1)
+                  }}
+                >
+                  Next step
+                </button>
+              )}
+            </>
+          )}
+          {(objectivesOnly || step === 3) && (
+            <button
+              type="submit"
+              className="button primary"
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting
+                ? 'Saving…'
+                : objectivesOnly
+                  ? 'Save objectives'
+                  : 'Save mission'}
+            </button>
+          )}
+        </div>
+        <section className="panel cg-content">
+          <ProposalPanel
+            mission={draft}
+            registry={registry}
+            savedMission={editing}
+            onApply={apply}
+            objectivesOnly={objectivesOnly}
+            disabled={form.formState.isSubmitting}
+          />
+        </section>
       </div>
-      <section className="panel cg-content">
-        <ProposalPanel
-          mission={draft}
-          registry={registry}
-          savedMission={editing}
-          onApply={apply}
-          objectivesOnly={objectivesOnly}
-          disabled={form.formState.isSubmitting}
-        />
-      </section>
+      <aside className="builder-context" aria-label="Mission draft context">
+        <h2>{objectivesOnly ? 'Objective context' : 'Mission summary'}</h2>
+        <p>{draft.name || 'Untitled mission'}</p>
+        <dl>
+          <dt>Duration</dt>
+          <dd>
+            {Number.isFinite(draft.duration_seconds)
+              ? `${draft.duration_seconds} seconds`
+              : 'Not set'}
+          </dd>
+          <dt>Support teams</dt>
+          <dd>
+            {Number.isFinite(draft.parameters.team_count)
+              ? draft.parameters.team_count
+              : 'Not set'}
+          </dd>
+          <dt>Objectives</dt>
+          <dd>{draft.objectives.length}</dd>
+          <dt>Required</dt>
+          <dd>{draft.objectives.filter((o) => o.required).length}</dd>
+          <dt>Backup power</dt>
+          <dd>
+            {draft.parameters.backup_power_enabled ? 'Enabled' : 'Disabled'}
+          </dd>
+        </dl>
+        <hr className="cg-rule" />
+        <h3>
+          {objectivesOnly
+            ? 'How objectives are evaluated'
+            : steps[step].replace(/^\d · /, '')}
+        </h3>
+        <p>
+          {objectivesOnly
+            ? 'Choose a registered metric, comparison, target and evaluation mode. Required objectives determine the outcome; optional objectives are recorded separately.'
+            : step === 0
+              ? 'Give this mission a clear name and duration. The saved configuration becomes the starting point for each simulation.'
+              : step === 1
+                ? 'Set the initial operating conditions. The registry describes how each parameter affects the simulation.'
+                : step === 2
+                  ? 'Define measurable outcomes with registered metrics, thresholds and evaluation modes.'
+                  : 'Review the complete configuration before saving. Existing runs retain their own launch snapshot.'}
+        </p>
+        <h3>Registered metrics</h3>
+        <dl>
+          {Object.values(registry.metrics).map((metric) => (
+            <div key={metric.key}>
+              <dt>{metric.name}</dt>
+              <dd>{metric.unit || 'count'}</dd>
+            </div>
+          ))}
+        </dl>
+      </aside>
     </form>
   )
 }

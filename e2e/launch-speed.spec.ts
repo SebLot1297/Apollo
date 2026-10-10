@@ -84,7 +84,7 @@ test('invalid launch speeds never submit a simulation and the maximum valid spee
       'Enter a speed greater than 0 and at most 3600.',
     )
     expect(writes).toBe(0)
-    await expect(page).toHaveURL('http://127.0.0.1:5173/')
+    await expect(page).toHaveURL(new URL('/', page.url()).href)
   }
   await speed.fill('3600')
   await expect(speed).toHaveAttribute('aria-invalid', 'false')

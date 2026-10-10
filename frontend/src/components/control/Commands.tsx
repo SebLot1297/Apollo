@@ -1,45 +1,47 @@
+import type { RunCommands } from '../../features/control/useRunCommands'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
-import type {
-  CommandType,
-  Incident,
-  IncidentKind,
-  MissionState,
-} from '../../types/mission'
+import type { Incident, IncidentKind, MissionState } from '../../types/mission'
 import { isTerminal } from '../../types/mission'
-import { useWorkspace } from '../../store/workspace'
-import {
-  newAction,
-  sendAction,
-  type ActionRequest,
-} from '../../services/commands'
-import { ApiError } from '../../services/api'
-import { useConfirm } from '../ui/confirmation'
-import { ErrorNotice } from '../ui/Feedback'
 import { PanelTitle } from '../ui/Primitives'
 
 export default function Commands({
   state,
   incident,
+  controller,
 }: {
   state: MissionState
   incident?: Incident
+  controller: RunCommands
 }) {
-  const client = useQueryClient(),
-    navigate = useNavigate(),
-    confirm = useConfirm()
-  const pending = useWorkspace((store) => store.pending[state.run_id] ?? false),
-    live = useWorkspace((store) => store.connections[state.run_id] === 'live')
-  const [uncertain, setUncertain] = useState<ActionRequest | null>(null),
-    [error, setError] = useState<unknown>(null),
-    [notice, setNotice] = useState('')
+  const navigate = useNavigate()
+  const {
+    pending,
+    live,
+    uncertain,
+    setError,
+    setNotice,
+    submit: sendRequest,
+    act: sendCommand,
+    blocked,
+    client,
+  } = controller
   const [kind, setKind] = useState<IncidentKind>('power_failure')
   const automatic = state.recovery_mode === 'automatic'
   const [speedDraft, setSpeedDraft] = useState<{
     runId: string
     value: string
   } | null>(null)
+  const act: RunCommands['act'] = async (command, payload) => {
+    const accepted = await sendCommand(command, payload)
+    if (accepted && command === 'set_speed') setSpeedDraft(null)
+    return accepted
+  }
+  const submit: RunCommands['submit'] = async (action) => {
+    const accepted = await sendRequest(action)
+    if (accepted && action.command_type === 'set_speed') setSpeedDraft(null)
+    return accepted
+  }
   const speed =
     speedDraft?.runId === state.run_id
       ? speedDraft.value
@@ -50,74 +52,13 @@ export default function Commands({
     !Number.isFinite(multiplier) ||
     multiplier <= 0 ||
     multiplier > 3600
-  const submit = async (action: ActionRequest) => {
-    setError(null)
-    setNotice('')
-    try {
-      const accepted = await sendAction(client, action)
-      setUncertain(null)
-      if (action.command_type === 'set_speed') setSpeedDraft(null)
-      setNotice(
-        action.command_type === 'set_speed'
-          ? `Simulation speed updated to ${accepted.time_multiplier}×.`
-          : action.command_type === 'set_recovery_mode'
-            ? `Recovery mode updated to ${accepted.recovery_mode}.`
-            : `${action.command_type.replaceAll('_', ' ')} confirmed by the server. ${accepted.command_history?.at(-1)?.effect ?? ''}`,
-      )
-      if (action.command_type === 'reset') {
-        useWorkspace.getState().selectRun(accepted.run_id)
-        navigate(`/mission-control/${accepted.run_id}`)
-      }
-    } catch (failure) {
-      setError(failure)
-      if (failure instanceof ApiError && failure.outcomeUnknown)
-        setUncertain(action)
-    }
-  }
-  const act = async (
-    command: CommandType | 'reset',
-    payload: Record<string, unknown> = {},
-  ) => {
-    if (useWorkspace.getState().pending[state.run_id] || !live || uncertain)
-      return
-    if (['finish', 'terminate', 'reset'].includes(command)) {
-      const descriptions = {
-        finish:
-          'Evaluate objectives at the current elapsed time. This does not advance to the mission duration.',
-        terminate:
-          'End this run unsuccessfully. The history and report will be retained.',
-        reset:
-          'Create a new, stopped run with a new identity. The old report and history remain available.',
-      }
-      if (
-        !(await confirm({
-          title: `${command === 'reset' ? 'Reset' : command === 'finish' ? 'Finish' : 'Terminate'} this run?`,
-          description: descriptions[command as keyof typeof descriptions],
-          confirmText:
-            command === 'reset'
-              ? 'Create new run'
-              : `${command === 'finish' ? 'Finish' : 'Terminate'} run`,
-        }))
-      )
-        return
-      if (useWorkspace.getState().pending[state.run_id]) return
-    }
-    await submit(newAction(state.run_id, command, payload))
-  }
-  const blocked = pending || !live || Boolean(uncertain)
   return (
     <section className="panel">
-      <PanelTitle title="Command console" meta="SERVER-AUTHORITATIVE" />
+      <PanelTitle title="Run tools" meta="Server-confirmed controls" />
       <div className="cg-content cg-stack">
         {!live && (
           <p className="cg-help" role="status">
             Commands disabled while disconnected or awaiting a fresh snapshot.
-          </p>
-        )}
-        <ErrorNotice error={error} />
-        {notice && (
-          <p className="cg-notice success" role="status">
-            {notice}
           </p>
         )}
         {uncertain && (
@@ -262,33 +203,6 @@ export default function Commands({
           </p>
         </form>
         <div className="cg-actions">
-          {state.status === 'created' && (
-            <button
-              className="button primary"
-              disabled={blocked}
-              onClick={() => void act('start')}
-            >
-              Start simulation
-            </button>
-          )}
-          {state.status === 'running' && (
-            <button
-              className="button"
-              disabled={blocked}
-              onClick={() => void act('pause')}
-            >
-              Pause simulation
-            </button>
-          )}
-          {state.status === 'paused' && (
-            <button
-              className="button primary"
-              disabled={blocked}
-              onClick={() => void act('resume')}
-            >
-              Resume simulation
-            </button>
-          )}
           {['running', 'paused'].includes(state.status) && (
             <button
               className="button"

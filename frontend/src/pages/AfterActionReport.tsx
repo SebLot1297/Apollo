@@ -74,74 +74,80 @@ export default function AfterActionReport() {
       ) : (
         report && (
           <>
-            <section className="panel cg-content cg-stack">
-              <div className="cg-actions spread">
-                <h2 className="cg-section-title">{report.mission.name}</h2>
-                <Badge tone={report.success ? 'green' : 'red'}>
-                  {report.success ? 'Success' : 'Unsuccessful'}
-                </Badge>
-              </div>
-              <p className="cg-help">
-                {report.status} · {number(report.elapsed_time_seconds)}{' '}
-                simulated seconds · {localDate(report.created_at)} · Run{' '}
-                {report.run_id}
-              </p>
-              <h3>Server numerical summary</h3>
-              <p data-testid="numerical-summary">{report.summary}</p>
-              <Link className="button" to={`/mission-control/${report.run_id}`}>
-                Open historical run / reset
-              </Link>
-              <details className="cg-details">
-                <summary>Mission configuration snapshot</summary>
-                <dl className="cg-facts">
-                  <dt>Duration</dt>
-                  <dd>{report.mission.duration_seconds} seconds</dd>
-                  {Object.entries(report.mission.parameters).map(
-                    ([key, value]) => (
-                      <div key={key}>
-                        <dt>{key}</dt>
-                        <dd>
-                          {typeof value === 'object'
-                            ? JSON.stringify(value)
-                            : String(value)}
-                        </dd>
-                      </div>
-                    ),
-                  )}
-                </dl>
-                <p className="cg-help">{report.mission.description}</p>
-                <details>
-                  <summary>Complete saved configuration JSON</summary>
-                  <pre>{JSON.stringify(report.mission, null, 2)}</pre>
-                </details>
-              </details>
-            </section>
-            <section className="panel">
-              <PanelTitle title="Final registered metrics" />
-              <div className="cg-table-wrap">
-                <table className="cg-table">
-                  <caption>
-                    Trusted backend values; overall outcome uses report.success.
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th>Metric</th>
-                      <th>Final value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(report.final_metrics).map(
+            <div className="report-summary">
+              <section className="panel cg-content cg-stack">
+                <div className="cg-actions spread">
+                  <h2 className="cg-section-title">{report.mission.name}</h2>
+                  <Badge tone={report.success ? 'green' : 'red'}>
+                    {report.success ? 'Success' : 'Unsuccessful'}
+                  </Badge>
+                </div>
+                <p className="cg-help">
+                  {report.status} · {number(report.elapsed_time_seconds)}{' '}
+                  simulated seconds · {localDate(report.created_at)} · Run{' '}
+                  {report.run_id}
+                </p>
+                <h3>Server numerical summary</h3>
+                <p data-testid="numerical-summary">{report.summary}</p>
+                <Link
+                  className="button"
+                  to={`/mission-control/${report.run_id}`}
+                >
+                  Open historical run / reset
+                </Link>
+                <details className="cg-details">
+                  <summary>Mission configuration snapshot</summary>
+                  <dl className="cg-facts">
+                    <dt>Duration</dt>
+                    <dd>{report.mission.duration_seconds} seconds</dd>
+                    {Object.entries(report.mission.parameters).map(
                       ([key, value]) => (
-                        <tr key={key}>
-                          <td>{key}</td>
-                          <td>{number(value)}</td>
-                        </tr>
+                        <div key={key}>
+                          <dt>{key}</dt>
+                          <dd>
+                            {typeof value === 'object'
+                              ? JSON.stringify(value)
+                              : String(value)}
+                          </dd>
+                        </div>
                       ),
                     )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+                  </dl>
+                  <p className="cg-help">{report.mission.description}</p>
+                  <details>
+                    <summary>Complete saved configuration JSON</summary>
+                    <pre>{JSON.stringify(report.mission, null, 2)}</pre>
+                  </details>
+                </details>
+              </section>
+              <section className="panel">
+                <PanelTitle title="Final registered metrics" />
+                <div className="cg-table-wrap">
+                  <table className="cg-table">
+                    <caption>
+                      Trusted backend values; overall outcome uses
+                      report.success.
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th>Metric</th>
+                        <th>Final value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(report.final_metrics).map(
+                        ([key, value]) => (
+                          <tr key={key}>
+                            <td>{key}</td>
+                            <td>{number(value)}</td>
+                          </tr>
+                        ),
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
             <ObjectiveResults results={report.objective_results} />
             <Telemetry history={report.telemetry} />
             <Events events={report.events} />

@@ -21,9 +21,9 @@ test('connected navigation has real data and no runtime errors', async ({
   await expect(page.getByText('Operation Aurora')).toHaveCount(0)
   for (const [link, title] of [
     ['Mission Builder', 'Mission builder'],
-    ['Objective Designer', 'Objective designer'],
+    ['Objectives', 'Objective designer'],
     ['Mission Control', 'Mission control'],
-    ['After-Action Reports', 'After-action reports'],
+    ['Reports', 'After-action reports'],
     ['Settings', 'Workspace settings'],
     ['Dashboard', 'Command dashboard'],
   ]) {

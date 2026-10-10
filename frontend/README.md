@@ -1,4 +1,10 @@
-# CommandGrid frontend handoff — Part C
+# CommandGrid frontend
+
+The current interface implements the approved Spatial atlas direction across every route. See [design system](../DESIGN.md), [approved substitutions](../docs/atlas-direction.md), and [implementation/verification](../docs/atlas-implementation.md). The original mockup is preserved in `../output/mockups/a-spatial-atlas.png`; locally served terrain provenance and the Roboto license are in `public/assets/`.
+
+Browser tests can use isolated ports without stopping existing development services. Set `COMMANDGRID_TEST_API_PORT` and `COMMANDGRID_TEST_FRONTEND_PORT` before running Playwright. Defaults remain 8000/5173. The Vite proxy accepts `COMMANDGRID_API_PROXY`, retaining its existing default.
+
+## Earlier Part C handoff
 
 Implemented against integrated A/B baseline `c5f52094bae52ad1109a5ee58e6c29085b6c4fca` and integrated on top of Part D commit `c0472b5` in the existing `codex/commandgrid-foundation` checkout. All Part C implementation changes are confined to `frontend/` and `e2e/`. Backend code, numerical rules, migrations, root manifests/lockfiles, Docker and root Playwright configuration are unchanged by Part C.
 

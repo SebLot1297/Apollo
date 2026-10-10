@@ -39,7 +39,7 @@ test('a new mission redirects and notifies only after the server confirms the sa
       .click()
     await persisted
     expect((await request.get(`/api/v1/missions/${id}`)).ok()).toBeTruthy()
-    await expect(page).toHaveURL('http://127.0.0.1:5173/mission-builder')
+    await expect(page).toHaveURL(new URL('/mission-builder', page.url()).href)
     await expect(page.locator('.cg-toast')).toHaveCount(0)
     await expect(
       page.getByRole('button', { name: 'Saving…', exact: true }),
@@ -47,7 +47,7 @@ test('a new mission redirects and notifies only after the server confirms the sa
   } finally {
     release()
   }
-  await expect(page).toHaveURL('http://127.0.0.1:5173/')
+  await expect(page).toHaveURL(new URL('/', page.url()).href)
   const toast = page.locator('.cg-toast')
   await expect(toast).toHaveText('mission saved successfully')
   await expect(toast).toHaveAttribute('role', 'status')
@@ -119,7 +119,7 @@ test('failed mission saves retain the draft without redirecting or showing a suc
   })
   await page.getByRole('button', { name: 'Save mission', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('Save unavailable')
-  await expect(page).toHaveURL('http://127.0.0.1:5173/mission-builder')
+  await expect(page).toHaveURL(new URL('/mission-builder', page.url()).href)
   await expect(page.locator('.cg-toast')).toHaveCount(0)
   await expect(page.getByLabel('Mission name', { exact: true })).toHaveValue(
     'Unsaved draft after failure',
@@ -144,7 +144,7 @@ test('validation failures never send a save or show success', async ({
   await expect(
     page.getByRole('alert').filter({ hasText: 'Mission was not saved' }),
   ).toBeVisible()
-  await expect(page).toHaveURL('http://127.0.0.1:5173/mission-builder')
+  await expect(page).toHaveURL(new URL('/mission-builder', page.url()).href)
   await expect(page.locator('.cg-toast')).toHaveCount(0)
   expect(writes).toBe(0)
 })

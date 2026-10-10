@@ -1,0 +1,45 @@
+{
+  "viewport": {
+    "width": 1586,
+    "height": 992
+  },
+  "regions": [
+    {
+      "x": 0,
+      "y": 0,
+      "width": 1586,
+      "height": 54
+    },
+    {
+      "x": 0,
+      "y": 54,
+      "width": 1586,
+      "height": 78
+    },
+    {
+      "x": 0,
+      "y": 132,
+      "width": 1586,
+      "height": 659.671875
+    },
+    {
+      "x": 0,
+      "y": 791.671875,
+      "width": 1586,
+      "height": 200
+    }
+  ],
+  "inspector": {
+    "x": 1151.421875,
+    "y": 132,
+    "width": 434.5625,
+    "height": 659.671875
+  },
+  "reference": {
+    "header": 54,
+    "strip": 78,
+    "workspace": 660,
+    "inspectorX": 1152
+  },
+  "content": "Test-only state fixtures; not real simulation outcome evidence."
+}

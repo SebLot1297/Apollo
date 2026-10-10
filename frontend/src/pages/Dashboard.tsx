@@ -200,6 +200,7 @@ export default function Dashboard() {
               <ScenarioMap
                 facilities={active.facilities}
                 teams={active.support_teams}
+                systems={active.systems}
               />
             </div>
           ) : runs.isPending ? (

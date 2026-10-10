@@ -5,6 +5,7 @@ import { Loading } from './components/ui/Feedback'
 import { ConfirmProvider } from './components/ui/Confirm'
 import './App.css'
 import './workspace.css'
+import './atlas.css'
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const MissionBuilder = lazy(() => import('./pages/MissionBuilder'))
 const ObjectiveDesigner = lazy(() => import('./pages/ObjectiveDesigner'))
