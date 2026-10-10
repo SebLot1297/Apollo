@@ -37,10 +37,17 @@ export default function Dashboard() {
     settings = useSettings()
   const [seed, setSeed] = useState('42'),
     [error, setError] = useState<unknown>(null)
+  const [launchSpeeds, setLaunchSpeeds] = useState<Record<string, string>>({})
   const active = runs.data?.find((run) => !isTerminal(run.status)),
     latest = reports.data?.[0]
   const launch = useMutation({
-    mutationFn: async (missionId: string) => {
+    mutationFn: async ({
+      missionId,
+      speed,
+    }: {
+      missionId: string
+      speed?: string
+    }) => {
       const randomSeed = Number(seed)
       if (
         !seed.trim() ||
@@ -53,11 +60,15 @@ export default function Dashboard() {
         )
       if (!settings.data)
         throw new Error('Load server preferences before launching.')
+      if (speed !== undefined && speedError(speed))
+        throw new Error(speedError(speed)!)
       return parseState(
+        // Untouched controls use the current server default. Only an explicit
+        // choice overrides it for this run, without changing saved preferences.
         await api.createRun(
           missionId,
           randomSeed,
-          settings.data.simulation_speed,
+          speed === undefined ? undefined : Number(speed),
         ),
       )
     },
@@ -251,6 +262,64 @@ export default function Dashboard() {
                   {mission.objectives.length} objectives · Updated{' '}
                   {localDate(mission.updated_at)}
                 </span>
+                {active?.mission_id !== mission.id && (
+                  <div className="cg-stack">
+                    <label className="cg-field">
+                      <span>Simulation speed (×)</span>
+                      <input
+                        type="number"
+                        aria-label="Simulation speed (×)"
+                        step="any"
+                        min="0"
+                        max="3600"
+                        value={
+                          launchSpeeds[mission.id] ??
+                          settings.data?.simulation_speed ??
+                          ''
+                        }
+                        disabled={launch.isPending || !settings.data}
+                        aria-invalid={Boolean(
+                          launchSpeeds[mission.id] !== undefined &&
+                          speedError(launchSpeeds[mission.id]),
+                        )}
+                        aria-describedby={`launch-speed-help-${mission.id}`}
+                        onChange={(event) =>
+                          setLaunchSpeeds((current) => ({
+                            ...current,
+                            [mission.id]: event.target.value,
+                          }))
+                        }
+                      />
+                      <small id={`launch-speed-help-${mission.id}`}>
+                        1× is real time. Choose a speed greater than 0 and at
+                        most 3600 for this launch. Settings provide the saved
+                        default.
+                      </small>
+                      {launchSpeeds[mission.id] !== undefined &&
+                        speedError(launchSpeeds[mission.id]) && (
+                          <span className="cg-field-error" role="alert">
+                            {speedError(launchSpeeds[mission.id])}
+                          </span>
+                        )}
+                    </label>
+                    {launchSpeeds[mission.id] !== undefined && (
+                      <button
+                        type="button"
+                        className="button"
+                        disabled={launch.isPending}
+                        onClick={() =>
+                          setLaunchSpeeds((current) => {
+                            const next = { ...current }
+                            delete next[mission.id]
+                            return next
+                          })
+                        }
+                      >
+                        Use saved default
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="cg-actions">
                   <Link
                     className="button"
@@ -283,7 +352,7 @@ export default function Dashboard() {
                   >
                     Delete
                   </button>
-                  {active ? (
+                  {active?.mission_id === mission.id ? (
                     <Link
                       className="button"
                       to={`/mission-control/${active.run_id}`}
@@ -293,11 +362,19 @@ export default function Dashboard() {
                   ) : (
                     <button
                       className="button primary"
-                      disabled={launch.isPending || !settings.data}
+                      disabled={
+                        Boolean(active) ||
+                        runs.isPending ||
+                        launch.isPending ||
+                        !settings.data
+                      }
                       onClick={() => {
                         if (!launch.isPending) {
                           setError(null)
-                          launch.mutate(mission.id)
+                          launch.mutate({
+                            missionId: mission.id,
+                            speed: launchSpeeds[mission.id],
+                          })
                         }
                       }}
                     >
@@ -305,6 +382,15 @@ export default function Dashboard() {
                     </button>
                   )}
                 </div>
+                {active && active.mission_id !== mission.id && (
+                  <p className="cg-help">
+                    Finish or terminate “{active.mission.name}” before launching
+                    this mission.{' '}
+                    <Link to={`/mission-control/${active.run_id}`}>
+                      Open that active mission
+                    </Link>
+                  </p>
+                )}
               </article>
             ))}
           </div>
@@ -329,4 +415,11 @@ export default function Dashboard() {
       </section>
     </div>
   )
+}
+
+function speedError(value: string) {
+  const speed = Number(value)
+  return !value.trim() || !Number.isFinite(speed) || speed <= 0 || speed > 3600
+    ? 'Enter a speed greater than 0 and at most 3600.'
+    : null
 }

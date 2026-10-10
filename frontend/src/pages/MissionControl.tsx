@@ -57,6 +57,10 @@ export default function MissionControl() {
         ) : runs.data?.length ? (
           <section className="panel cg-content cg-stack">
             <h2 className="cg-section-title">Select a simulation</h2>
+            <p className="cg-help">
+              Saved missions appear here after you launch them.{' '}
+              <Link to="/">Choose a saved mission on the dashboard</Link>
+            </p>
             {runs.data.map((run) => (
               <Link
                 className="button"
@@ -105,6 +109,10 @@ export default function MissionControl() {
                 Sequence {state.sequence} · T+{' '}
                 {elapsed(state.elapsed_time_seconds)}
               </span>
+              <p className="cg-help">
+                This run uses the mission configuration and speed captured at
+                launch. Saved changes apply to future launches.
+              </p>
             </section>
             <div className="cg-systems">
               {Object.entries(systemLabels).map(([key, label]) => (

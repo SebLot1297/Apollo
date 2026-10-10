@@ -6,6 +6,7 @@ import {
   launch,
   resetWorkspace,
   saveConfiguration,
+  saveMissionFromUI,
   startAndResolvePower,
   finish,
 } from './helpers'
@@ -108,8 +109,7 @@ test('fixture mission proposals support edit/discard/apply and require a separat
     ).some((m) => m.name === 'Edited AI proposal'),
   ).toBe(false)
   await page.getByRole('button', { name: '4 · Review and save' }).click()
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
-  await expect(page).toHaveURL(/\/mission-builder\/[\da-f-]+$/)
+  await saveMissionFromUI(page)
   expect(saves).toBe(1)
 })
 test('fixture objective suggestions require selection, omit unsaved mission_id, include context, and append fresh IDs', async ({
@@ -150,10 +150,9 @@ test('fixture objective suggestions require selection, omit unsaved mission_id, 
   await page.getByRole('button', { name: '3 · Objectives' }).click()
   await expect(page.locator('fieldset.cg-objective')).toHaveCount(5)
   await page.getByRole('button', { name: '4 · Review and save' }).click()
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
-  await expect(page).toHaveURL(/\/mission-builder\/[\da-f-]+$/)
+  const created = await saveMissionFromUI(page)
   const saved = (await (
-    await request.get(`/api/v1/missions/${page.url().split('/').at(-1)}`)
+    await request.get(`/api/v1/missions/${created.id}`)
   ).json()) as MissionConfiguration
   expect(new Set(saved.objectives.map((o) => o.id)).size).toBe(5)
   expect(saved.objectives.every((o) => o.id !== generated.id)).toBe(true)

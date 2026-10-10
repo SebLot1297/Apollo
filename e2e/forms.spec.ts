@@ -1,6 +1,97 @@
 import { test, expect } from '@playwright/test'
-import { configuration, resetWorkspace, saveConfiguration } from './helpers'
+import {
+  configuration,
+  resetWorkspace,
+  saveConfiguration,
+  saveMissionFromUI,
+} from './helpers'
 test.beforeEach(async ({ request }) => resetWorkspace(request))
+
+test('replace all template objectives, repeatedly add/delete, and persist the replacement draft', async ({
+  page,
+  request,
+}) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('/mission-builder')
+  await page
+    .getByLabel('Mission name', { exact: true })
+    .fill('Replacement objectives regression')
+  await page.getByRole('button', { name: '3 · Objectives' }).click()
+  const objectives = page.locator('fieldset.cg-objective')
+  await expect(objectives).toHaveCount(3)
+  for (let remaining = 3; remaining > 0; remaining--) {
+    await objectives
+      .first()
+      .getByLabel('Required for mission success')
+      .uncheck()
+    await objectives
+      .first()
+      .getByRole('button', { name: 'Delete objective 1' })
+      .click()
+    await expect(objectives).toHaveCount(remaining - 1)
+  }
+  await page.getByRole('button', { name: 'Add objective', exact: true }).click()
+  await expect(objectives).toHaveCount(1)
+  await objectives
+    .first()
+    .getByLabel('Objective name', { exact: true })
+    .fill('Replacement resolution')
+  await objectives
+    .first()
+    .getByLabel('Metric', { exact: true })
+    .selectOption('incidents_resolved')
+  await objectives
+    .first()
+    .getByLabel('Threshold (count)', { exact: true })
+    .fill('1')
+  await page.getByRole('button', { name: 'Add objective', exact: true }).click()
+  await expect(objectives).toHaveCount(2)
+  await objectives
+    .nth(1)
+    .getByLabel('Objective name', { exact: true })
+    .fill('Replacement equipment')
+  await objectives
+    .nth(1)
+    .getByLabel('Metric', { exact: true })
+    .selectOption('equipment_availability_percent')
+  await objectives
+    .nth(1)
+    .getByLabel('Threshold (%)', { exact: true })
+    .fill('70')
+  // Delete a middle row and append again without disturbing the existing count metric.
+  await page.getByRole('button', { name: 'Add objective', exact: true }).click()
+  await objectives
+    .nth(1)
+    .getByRole('button', { name: 'Delete objective 2' })
+    .click()
+  await page.getByRole('button', { name: 'Add objective', exact: true }).click()
+  await expect(objectives).toHaveCount(3)
+  await expect(
+    objectives.first().getByLabel('Metric', { exact: true }),
+  ).toHaveValue('incidents_resolved')
+  await expect(
+    objectives.first().getByLabel('Threshold (count)', { exact: true }),
+  ).toHaveValue('1')
+  await page.getByRole('button', { name: '4 · Review and save' }).click()
+  const created = await saveMissionFromUI(page)
+  const mission = await (
+    await request.get(`/api/v1/missions/${created.id}`)
+  ).json()
+  expect(mission.objectives).toHaveLength(3)
+  expect(
+    new Set(mission.objectives.map((objective: { id: string }) => objective.id))
+      .size,
+  ).toBe(3)
+  expect(mission.objectives[0].name).toBe('Replacement resolution')
+  await page.goto(`/mission-builder/${created.id}`)
+  await page.reload()
+  await page.getByRole('button', { name: '3 · Objectives' }).click()
+  await expect(
+    objectives.first().getByLabel('Objective name', { exact: true }),
+  ).toHaveValue('Replacement resolution')
+  expect(errors).toEqual([])
+})
 test('numeric boundaries, blank fields, invalid metadata, and error focus', async ({
   page,
 }) => {
@@ -156,8 +247,9 @@ test('team regeneration and scalar metadata persist; server errors preserve draf
       response.request().method() === 'PUT' &&
       response.ok(),
   )
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
+  await saveMissionFromUI(page)
   await savedResponse
+  await page.goto(`/mission-builder/${mission.id}`)
   await page.reload()
   await page.getByRole('button', { name: '2 · Operational conditions' }).click()
   await expect(
@@ -174,7 +266,7 @@ test('team regeneration and scalar metadata persist; server errors preserve draf
     number: 4.2,
     nothing: null,
   })
-  // A second count edit in the same mounted form must use the newly saved baseline.
+  // A second count edit must use the newly saved configuration as its baseline.
   await page.getByLabel('Support team count (count)', { exact: true }).fill('4')
   await page.getByRole('button', { name: '4 · Review and save' }).click()
   const secondResponse = page.waitForResponse(
@@ -183,7 +275,7 @@ test('team regeneration and scalar metadata persist; server errors preserve draf
       response.request().method() === 'PUT' &&
       response.ok(),
   )
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
+  await saveMissionFromUI(page)
   await secondResponse
   expect(
     (await (await request.get(`/api/v1/missions/${mission.id}`)).json())
@@ -218,9 +310,7 @@ test('clone generates fresh identities; dirty navigation requires explicit disca
     'Unsaved clone',
   )
   await page.getByRole('button', { name: '4 · Review and save' }).click()
-  await page.getByRole('button', { name: 'Save mission', exact: true }).click()
-  await expect(page).toHaveURL(/\/mission-builder\/[\da-f-]+$/)
-  const clonedId = page.url().split('/').at(-1)!
+  const clonedId = (await saveMissionFromUI(page)).id
   expect(clonedId).not.toBe(mission.id)
   const cloned = await (
     await request.get(`/api/v1/missions/${clonedId}`)
@@ -273,4 +363,88 @@ test('coordinated required-objective swap saves atomically through the real miss
   expect(saved.objectives.map((o: { id: string }) => o.id)).toEqual(
     mission.objectives.map((o) => o.id),
   )
+})
+
+test('saved objective deletion and addition preserve the remaining IDs through real objective endpoints', async ({
+  page,
+  request,
+}) => {
+  const mission = await saveConfiguration(
+    request,
+    await configuration(request, 'Saved replacement'),
+  )
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto(`/objectives/${mission.id}`)
+  const objectives = page.locator('fieldset.cg-objective')
+  await objectives
+    .nth(1)
+    .getByRole('button', { name: 'Delete objective 2' })
+    .click()
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/objectives/${mission.objectives[1].id}`) &&
+      response.request().method() === 'DELETE' &&
+      response.status() === 204,
+  )
+  await page.getByRole('button', { name: 'Save objectives' }).click()
+  await deleted
+  await expect(
+    page.getByText('Configuration saved to the backend.'),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Add objective', exact: true }).click()
+  await expect(objectives).toHaveCount(2)
+  await objectives
+    .nth(1)
+    .getByLabel('Objective name', { exact: true })
+    .fill('New saved elapsed goal')
+  await objectives
+    .nth(1)
+    .getByLabel('Metric', { exact: true })
+    .selectOption('elapsed_time_seconds')
+  await objectives
+    .nth(1)
+    .getByLabel('Threshold (seconds)', { exact: true })
+    .fill('120')
+  const added = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/missions/${mission.id}/objectives`) &&
+      response.request().method() === 'POST' &&
+      response.ok(),
+  )
+  await page.getByRole('button', { name: 'Save objectives' }).click()
+  await added
+  await expect(
+    page.getByText('Configuration saved to the backend.'),
+  ).toBeVisible()
+  const saved = await (
+    await request.get(`/api/v1/missions/${mission.id}`)
+  ).json()
+  expect(saved.objectives[0].id).toBe(mission.objectives[0].id)
+  expect(saved.objectives[1].id).not.toBe(mission.objectives[1].id)
+  expect(saved.objectives[1].name).toBe('New saved elapsed goal')
+  await objectives
+    .first()
+    .getByRole('button', { name: 'Delete objective 1' })
+    .click()
+  const removedFirst = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/objectives/${mission.objectives[0].id}`) &&
+      response.request().method() === 'DELETE' &&
+      response.status() === 204,
+  )
+  await page.getByRole('button', { name: 'Save objectives' }).click()
+  await removedFirst
+  await page.reload()
+  await expect(objectives).toHaveCount(1)
+  await expect(
+    objectives.first().getByLabel('Objective name', { exact: true }),
+  ).toHaveValue('New saved elapsed goal')
+  await expect(
+    objectives.first().getByLabel('Metric', { exact: true }),
+  ).toHaveValue('elapsed_time_seconds')
+  await expect(
+    objectives.first().getByLabel('Threshold (seconds)', { exact: true }),
+  ).toHaveValue('120')
+  expect(errors).toEqual([])
 })
