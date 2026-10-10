@@ -1,0 +1,452 @@
+{
+  "run_id": "b378fd50-5cba-5d47-84b7-2bca72638932",
+  "mission_id": "cedab24e-0c7d-5a3b-b041-870a1f894b23",
+  "mission": {
+    "id": "cedab24e-0c7d-5a3b-b041-870a1f894b23",
+    "schema_version": 1,
+    "name": "Operation Signal Restore",
+    "description": "A fictional emergency-support facility has experienced intermittent power and communications outages. Operators must restore services while managing limited equipment availability.",
+    "category": "communications_recovery",
+    "duration_seconds": 21600,
+    "parameters": {
+      "weather_severity": 85.0,
+      "environmental_disruption": 70.0,
+      "team_count": 4,
+      "equipment_reliability": 75.0,
+      "resource_level": 70.0,
+      "communication_reliability": 45.0,
+      "backup_power_enabled": true,
+      "custom_metadata": {}
+    },
+    "objectives": [
+      {
+        "id": "512060bd-e614-5af7-bcd4-679768bd3e37",
+        "name": "Maintain communication service",
+        "metric_key": "communication_uptime_percent",
+        "operator": ">=",
+        "target_value": 90.0,
+        "required": true,
+        "deadline_seconds": null,
+        "evaluation_mode": "final",
+        "description": "At least 90% connected simulated time at completion."
+      },
+      {
+        "id": "c25c11a2-b756-5f19-9b0c-be499b0856f9",
+        "name": "Restore two systems",
+        "metric_key": "systems_restored",
+        "operator": ">=",
+        "target_value": 2.0,
+        "required": true,
+        "deadline_seconds": 21600.0,
+        "evaluation_mode": "deadline",
+        "description": "Restore two legitimate degraded system episodes within the mission window."
+      },
+      {
+        "id": "562dc49c-2d30-528a-8f51-ec3ed9f3f3ce",
+        "name": "Preserve equipment availability",
+        "metric_key": "equipment_availability_percent",
+        "operator": ">=",
+        "target_value": 75.0,
+        "required": false,
+        "deadline_seconds": null,
+        "evaluation_mode": "final",
+        "description": ""
+      }
+    ],
+    "facilities": [
+      {
+        "id": "a8b845b4-a0bf-5aa6-bf5f-2afb2e4a4619",
+        "name": "North Haven Relay",
+        "kind": "relay",
+        "x": 25.0,
+        "y": 35.0,
+        "status": "operational"
+      },
+      {
+        "id": "5ef9857a-77f7-5eb6-b695-027cd70074f6",
+        "name": "Cedar Support Center",
+        "kind": "facility",
+        "x": 55.0,
+        "y": 60.0,
+        "status": "operational"
+      },
+      {
+        "id": "568da911-1adb-59fa-8289-adaece02b8bc",
+        "name": "Juniper Power Station",
+        "kind": "power",
+        "x": 75.0,
+        "y": 30.0,
+        "status": "operational"
+      }
+    ],
+    "support_teams": [
+      {
+        "id": "83bbe681-ad07-5ddd-a731-bf1841a57f8d",
+        "name": "Support Team 1",
+        "x": 10.0,
+        "y": 75.0,
+        "status": "available"
+      },
+      {
+        "id": "39c0190a-8c73-545a-92db-9144e0a24616",
+        "name": "Support Team 2",
+        "x": 18.0,
+        "y": 75.0,
+        "status": "available"
+      },
+      {
+        "id": "c3e0c5b5-b3bc-58a0-b076-0ad7715ec0dd",
+        "name": "Support Team 3",
+        "x": 26.0,
+        "y": 75.0,
+        "status": "available"
+      },
+      {
+        "id": "620b7400-ce24-5497-8912-93ec8dd47bf7",
+        "name": "Support Team 4",
+        "x": 34.0,
+        "y": 75.0,
+        "status": "available"
+      }
+    ],
+    "created_at": "2026-10-10T12:00:00Z",
+    "updated_at": "2026-10-10T12:00:00Z"
+  },
+  "status": "running",
+  "elapsed_time_seconds": 0.0,
+  "random_seed": 42,
+  "time_multiplier": 30.0,
+  "sequence": 3,
+  "metrics": {
+    "communication_uptime_percent": 100.0,
+    "equipment_availability_percent": 75.0,
+    "incidents_resolved": 0,
+    "supplies_delivered_percent": 0.0,
+    "systems_restored": 2,
+    "elapsed_time_seconds": 0
+  },
+  "systems": {
+    "communications": {
+      "health": 85.0,
+      "baseline_health": 45.0,
+      "status": "operational",
+      "operational_units": null,
+      "total_units": null
+    },
+    "power": {
+      "health": 90.0,
+      "baseline_health": 65.0,
+      "status": "operational",
+      "operational_units": null,
+      "total_units": null
+    },
+    "equipment": {
+      "health": 75.0,
+      "baseline_health": 75.0,
+      "status": "operational",
+      "operational_units": 15,
+      "total_units": 20
+    }
+  },
+  "facilities": [
+    {
+      "id": "a8b845b4-a0bf-5aa6-bf5f-2afb2e4a4619",
+      "name": "North Haven Relay",
+      "kind": "relay",
+      "x": 25.0,
+      "y": 35.0,
+      "status": "operational"
+    },
+    {
+      "id": "5ef9857a-77f7-5eb6-b695-027cd70074f6",
+      "name": "Cedar Support Center",
+      "kind": "facility",
+      "x": 55.0,
+      "y": 60.0,
+      "status": "operational"
+    },
+    {
+      "id": "568da911-1adb-59fa-8289-adaece02b8bc",
+      "name": "Juniper Power Station",
+      "kind": "power",
+      "x": 75.0,
+      "y": 30.0,
+      "status": "operational"
+    }
+  ],
+  "support_teams": [
+    {
+      "id": "83bbe681-ad07-5ddd-a731-bf1841a57f8d",
+      "name": "Support Team 1",
+      "x": 10.0,
+      "y": 75.0,
+      "status": "available"
+    },
+    {
+      "id": "39c0190a-8c73-545a-92db-9144e0a24616",
+      "name": "Support Team 2",
+      "x": 18.0,
+      "y": 75.0,
+      "status": "available"
+    },
+    {
+      "id": "c3e0c5b5-b3bc-58a0-b076-0ad7715ec0dd",
+      "name": "Support Team 3",
+      "x": 26.0,
+      "y": 75.0,
+      "status": "available"
+    },
+    {
+      "id": "620b7400-ce24-5497-8912-93ec8dd47bf7",
+      "name": "Support Team 4",
+      "x": 34.0,
+      "y": 75.0,
+      "status": "available"
+    }
+  ],
+  "incidents": [],
+  "events": [
+    {
+      "id": "ea2fdef4-ff9c-5cfc-a942-352b86f53a28",
+      "type": "state_created",
+      "message": "Created fictional Communications Recovery run; clock is stopped.",
+      "timestamp": "2026-10-10T12:00:00Z",
+      "elapsed_time_seconds": 0.0,
+      "details": {}
+    },
+    {
+      "id": "c874c925-759b-599c-abfa-cb3ff7c26be0",
+      "type": "command",
+      "message": "start: Run is running at 0 simulated seconds",
+      "timestamp": "2026-10-10T12:00:00Z",
+      "elapsed_time_seconds": 0.0,
+      "details": {
+        "command_type": "start",
+        "payload": {}
+      }
+    },
+    {
+      "id": "cf6ed944-b036-5fb5-b162-5ce503f7f6d5",
+      "type": "system_restored",
+      "message": "communications recovered from 45 to 85 health; closed one legitimate recovery episode.",
+      "timestamp": "2026-10-10T12:00:00Z",
+      "elapsed_time_seconds": 0.0,
+      "details": {
+        "system": "communications",
+        "systems_restored": 1
+      }
+    },
+    {
+      "id": "828b0b0e-63cd-58b4-8931-a052174a8182",
+      "type": "command",
+      "message": "activate_backup_communications: Activated backup communications; spent 2 resources",
+      "timestamp": "2026-10-10T12:00:00Z",
+      "elapsed_time_seconds": 0.0,
+      "details": {
+        "command_type": "activate_backup_communications",
+        "payload": {}
+      }
+    },
+    {
+      "id": "c5ba2a5b-4035-5c7e-a373-5b42ca9203e2",
+      "type": "system_restored",
+      "message": "power recovered from 65 to 90 health; closed one legitimate recovery episode.",
+      "timestamp": "2026-10-10T12:00:00Z",
+      "elapsed_time_seconds": 0.0,
+      "details": {
+        "system": "power",
+        "systems_restored": 2
+      }
+    },
+    {
+      "id": "40898afe-5688-5808-9d48-fb9fc720d04b",
+      "type": "command",
+      "message": "activate_backup_power: Activated backup power; spent 3 resources",
+      "timestamp": "2026-10-10T12:00:00Z",
+      "elapsed_time_seconds": 0.0,
+      "details": {
+        "command_type": "activate_backup_power",
+        "payload": {}
+      }
+    }
+  ],
+  "objective_results": [
+    {
+      "objective": {
+        "id": "512060bd-e614-5af7-bcd4-679768bd3e37",
+        "name": "Maintain communication service",
+        "metric_key": "communication_uptime_percent",
+        "operator": ">=",
+        "target_value": 90.0,
+        "required": true,
+        "deadline_seconds": null,
+        "evaluation_mode": "final",
+        "description": "At least 90% connected simulated time at completion."
+      },
+      "achieved_value": 100.0,
+      "passed": false,
+      "status": "pending",
+      "first_achieved_at_seconds": 0.0,
+      "reason": "communication_uptime_percent=100 >= 90. Awaiting the actual terminal endpoint."
+    },
+    {
+      "objective": {
+        "id": "c25c11a2-b756-5f19-9b0c-be499b0856f9",
+        "name": "Restore two systems",
+        "metric_key": "systems_restored",
+        "operator": ">=",
+        "target_value": 2.0,
+        "required": true,
+        "deadline_seconds": 21600.0,
+        "evaluation_mode": "deadline",
+        "description": "Restore two legitimate degraded system episodes within the mission window."
+      },
+      "achieved_value": 2.0,
+      "passed": true,
+      "status": "passed",
+      "first_achieved_at_seconds": 0.0,
+      "reason": "systems_restored=2 >= 2. First achieved at 0s; inclusive deadline 21600s."
+    },
+    {
+      "objective": {
+        "id": "562dc49c-2d30-528a-8f51-ec3ed9f3f3ce",
+        "name": "Preserve equipment availability",
+        "metric_key": "equipment_availability_percent",
+        "operator": ">=",
+        "target_value": 75.0,
+        "required": false,
+        "deadline_seconds": null,
+        "evaluation_mode": "final",
+        "description": ""
+      },
+      "achieved_value": 75.0,
+      "passed": false,
+      "status": "pending",
+      "first_achieved_at_seconds": 0.0,
+      "reason": "equipment_availability_percent=75 >= 75. Awaiting the actual terminal endpoint."
+    }
+  ],
+  "history": [
+    {
+      "elapsed_time_seconds": 0.0,
+      "timestamp": "2026-10-10T12:00:00Z",
+      "sequence": 0,
+      "metrics": {
+        "communication_uptime_percent": 0.0,
+        "equipment_availability_percent": 75.0,
+        "incidents_resolved": 0,
+        "supplies_delivered_percent": 0.0,
+        "systems_restored": 0,
+        "elapsed_time_seconds": 0
+      }
+    },
+    {
+      "elapsed_time_seconds": 0.0,
+      "timestamp": "2026-10-10T12:00:00Z",
+      "sequence": 1,
+      "metrics": {
+        "communication_uptime_percent": 0.0,
+        "equipment_availability_percent": 75.0,
+        "incidents_resolved": 0,
+        "supplies_delivered_percent": 0.0,
+        "systems_restored": 0,
+        "elapsed_time_seconds": 0
+      }
+    },
+    {
+      "elapsed_time_seconds": 0.0,
+      "timestamp": "2026-10-10T12:00:00Z",
+      "sequence": 2,
+      "metrics": {
+        "communication_uptime_percent": 100.0,
+        "equipment_availability_percent": 75.0,
+        "incidents_resolved": 0,
+        "supplies_delivered_percent": 0.0,
+        "systems_restored": 1,
+        "elapsed_time_seconds": 0
+      }
+    },
+    {
+      "elapsed_time_seconds": 0.0,
+      "timestamp": "2026-10-10T12:00:00Z",
+      "sequence": 3,
+      "metrics": {
+        "communication_uptime_percent": 100.0,
+        "equipment_availability_percent": 75.0,
+        "incidents_resolved": 0,
+        "supplies_delivered_percent": 0.0,
+        "systems_restored": 2,
+        "elapsed_time_seconds": 0
+      }
+    }
+  ],
+  "connected_time_seconds": 0.0,
+  "connected_accumulated_seconds": 0.0,
+  "connected_interval_start": 0.0,
+  "connected": true,
+  "next_incident_at": {
+    "communications_outage": 60.0,
+    "power_failure": 3558.782116140469,
+    "equipment_degradation": 1457.8430783892832
+  },
+  "rng_counters": {
+    "communications_outage": 1,
+    "power_failure": 1,
+    "equipment_degradation": 1
+  },
+  "event_counter": 6,
+  "incident_counter": 0,
+  "resource_remaining": 65.0,
+  "resource_anchor": 65.0,
+  "resource_anchor_time": 0.0,
+  "supplies_anchor": 0.0,
+  "supplies_delivered_percent": 0.0,
+  "recovery_open": {
+    "communications": false,
+    "power": false,
+    "equipment": false
+  },
+  "systems_restored_count": 2,
+  "backup_communications_active": true,
+  "backup_power_active": true,
+  "objective_evidence": {
+    "512060bd-e614-5af7-bcd4-679768bd3e37": {
+      "breached": false,
+      "breach_at_seconds": null,
+      "first_achieved_at_seconds": 0.0
+    },
+    "c25c11a2-b756-5f19-9b0c-be499b0856f9": {
+      "breached": false,
+      "breach_at_seconds": null,
+      "first_achieved_at_seconds": 0.0
+    },
+    "562dc49c-2d30-528a-8f51-ec3ed9f3f3ce": {
+      "breached": false,
+      "breach_at_seconds": null,
+      "first_achieved_at_seconds": 0.0
+    }
+  },
+  "command_history": [
+    {
+      "command_type": "start",
+      "payload": {},
+      "elapsed_time_seconds": 0.0,
+      "timestamp": "2026-10-10T12:00:00Z",
+      "effect": "Run is running at 0 simulated seconds"
+    },
+    {
+      "command_type": "activate_backup_communications",
+      "payload": {},
+      "elapsed_time_seconds": 0.0,
+      "timestamp": "2026-10-10T12:00:00Z",
+      "effect": "Activated backup communications; spent 2 resources"
+    },
+    {
+      "command_type": "activate_backup_power",
+      "payload": {},
+      "elapsed_time_seconds": 0.0,
+      "timestamp": "2026-10-10T12:00:00Z",
+      "effect": "Activated backup power; spent 3 resources"
+    }
+  ]
+}
