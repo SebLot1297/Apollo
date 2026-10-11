@@ -307,21 +307,6 @@ export default function MissionForm({
               />
               Backup power enabled
             </label>
-            <Field
-              form={form}
-              path="metadata_text"
-              label="Custom metadata (JSON scalar object)"
-            >
-              <textarea
-                className="mono"
-                {...form.register('metadata_text')}
-                aria-invalid={Boolean(form.formState.errors.metadata_text)}
-              />
-              <small>
-                Strings, booleans, finite numbers, and null only. Metadata has
-                no numerical effects and is never executed.
-              </small>
-            </Field>
           </section>
         )}
         <section
@@ -416,7 +401,7 @@ export default function MissionForm({
                       step === 0
                         ? ['name', 'duration_seconds', 'category']
                         : step === 1
-                          ? ['parameters', 'metadata_text']
+                          ? ['parameters']
                           : ['objectives']
                     if (await form.trigger(fields, { shouldFocus: true }))
                       setStep(step + 1)

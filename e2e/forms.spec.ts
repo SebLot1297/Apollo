@@ -92,9 +92,7 @@ test('replace all template objectives, repeatedly add/delete, and persist the re
   ).toHaveValue('Replacement resolution')
   expect(errors).toEqual([])
 })
-test('numeric boundaries, blank fields, invalid metadata, and error focus', async ({
-  page,
-}) => {
+test('numeric boundaries, blank fields, and error focus', async ({ page }) => {
   await page.goto('/mission-builder')
   const duration = page.getByLabel('Duration (seconds)', { exact: true })
   for (const invalid of ['', '59', '86401', '60.5']) {
@@ -119,20 +117,10 @@ test('numeric boundaries, blank fields, invalid metadata, and error focus', asyn
     await expect(weather).toHaveAttribute('aria-invalid', 'true')
   }
   await weather.fill('85')
-  for (const invalid of [
-    '{"nested":{"x":1}}',
-    '{"array":[1]}',
-    '{"number":1e999}',
-    'broken JSON',
-  ]) {
-    await page
-      .getByLabel('Custom metadata (JSON scalar object)', { exact: true })
-      .fill(invalid)
-    await page.getByRole('button', { name: 'Next step' }).click()
-    await expect(
-      page.getByLabel('Custom metadata (JSON scalar object)', { exact: true }),
-    ).toHaveAttribute('aria-invalid', 'true')
-  }
+  await page.getByRole('button', { name: 'Next step' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Measurable objectives' }),
+  ).toBeVisible()
 })
 test('objective bounds, last required protection, and switching deadline clears payload', async ({
   page,
@@ -204,16 +192,25 @@ test('team regeneration and scalar metadata persist; server errors preserve draf
   page,
   request,
 }) => {
-  const mission = await saveConfiguration(
-    request,
-    await configuration(request, 'Team regeneration'),
-  )
+  const config = await configuration(request, 'Team regeneration')
+  config.parameters.custom_metadata = {
+    text: 'fictional',
+    flag: true,
+    number: 4.2,
+    nothing: null,
+  }
+  const mission = await saveConfiguration(request, config)
   await page.goto(`/mission-builder/${mission.id}`)
   await page.getByRole('button', { name: '2 · Operational conditions' }).click()
   await page.getByLabel('Support team count (count)', { exact: true }).fill('6')
-  await page
-    .getByLabel('Custom metadata (JSON scalar object)', { exact: true })
-    .fill('{"text":"fictional","flag":true,"number":4.2,"nothing":null}')
+  await expect(
+    page.getByLabel('Custom metadata (JSON scalar object)', { exact: true }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByText('no numerical effects and is never executed.', {
+      exact: false,
+    }),
+  ).toHaveCount(0)
   await page.getByRole('button', { name: '4 · Review and save' }).click()
   let submitted: Record<string, unknown> | undefined
   await page.route(`**/api/v1/missions/${mission.id}`, async (route) => {
