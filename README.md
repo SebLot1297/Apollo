@@ -1,98 +1,17 @@
-# CommandGrid
+CommandGrid — Practice your infrastructure recovery. Understand every outcome
 
-Fictional, noncombat infrastructure recovery simulator in the Apollo repository.
+When power, communications, and equipment all come down at once, it’s a matter of priorities about which to make a decision: when to restore certain services, when to call for backup, and how to ration the limited resources appropriately. Even if the power is restored immediately, the downtime is already a fact, which cannot be ignored when determining the outcome of the system recovery.
+Use CommandGrid, a fictional noncombat infrastructure recovery simulator, to make these decisions and explore their consequences. In this project, we introduce the players to a configurable scenario with a running view of the situation, controls for infrastructure recovery, and an informative postgame report about their choices. Our scenario is set in an emergency-support facility affected by concurrent communications failures (power and equipment outages are its supporting hazards. We use the word ‘mission’ to describe a bounded duration of simulation with specific goals).
+CommandGrid immerses users in a whole decision-making cycle:
+1. They configure the exercise by hand — setting the mission length, the weather severity, degree of environment disturbance, reliability of equipment and communications, resource stockpile, support crews, and backup power.
+An exercise can be saved, edited, or duplicated to form a new mission.
+2. They define the objective — choosing which of several available measurements will be considered a successful mission completion. Examples of objectives include maintaining communications within a given range, restoring all systems by the end of exercise, keeping equipment intact, or delivering some resources to the target area. Objectives may measure the final state of the exercise, some particular persistent conditions, deadline-based mission win, or accumulate any of these to measure overall success.
+3. They react to the failures as they occur — by looking at the large-scale terrain with overlaid mission-related infrastructure and observing indicators of communication, equipment, power, and resource states. They can see the active incidents, their estimated cost in terms of the system or mission success, and possible corrective actions. There is also a manual mode for exercising fine-grained control over the systems in the current simulation, and an automatic mode that pursues a resource-limited decision-making policy.
+4. They review the hard evidence — the saved report summarizes the result, the game state right after it, the objective function value, and the telemetry. The incident history, event log, and accepted commands are expandable to help understand the context, though initially, they are hidden to avoid clutter. The run data is saved even when the player reverts to the main menu, and the comparison feature lets them look at the record of their exercise.
+5. 
+One interesting thing to note is that the current state of communications may differ significantly from the uptime: if at any point during the exercise the channel dropped, the objective will consider it a disconnection, even if the end state is successful. This highlights the importance of consistent monitoring throughout the duration of the mission.
+Beneath the nice UI, there is a deterministic simulation core. The same saved configuration, seed, and command sequence will reproduce the same numerical results, allowing for meaningful comparisons between different runs of the exercise. At the player’s option, the game can be paused, resumed, or the time can be sped up to examine the effects of their decisions or get through large swaths of dull running.
+We implemented the frontend in React and TypeScript, making REST calls for configuration and command entry and using WebSockets for state updates. The backend is a Python FastAPI application that coordinates the exercise, saving configurations, runs, states, telemetry, commands, and reports in an PostgreSQL database with TimescaleDB extension (for time-series) and comes with SQLite support for prototyping. An optional AI assistant interprets some of the recorded information (incident records, recovery options, or report interpretation) for the user. Since the AI training is a black box, the simulation engine exposes relevant values for the assistant to operate on. The user initiates the AI feature, and the interface notes when it is not available (seeded responses or fallbacks). CommandGrid is functional without the AI, including all the persistence and computation of results.
 
-## Current milestone
-
-Part A implements backend infrastructure: mission/objective CRUD, validated API requests, SQLAlchemy repositories, Alembic migrations, real TimescaleDB hypertables, persistent settings, atomic command/report storage, an injectable single-process runner, WebSockets, AI route/audit boundaries, startup scripts and Docker configuration.
-
-Part B's deterministic simulation engine is integrated. Simulations, incident commands, telemetry, WebSocket updates, terminal reports and reset use the real engine. Its full numerical snapshot is saved privately to preserve seeded scheduling and objective evidence across restart. Part D's AI service remains pending; AI actions return explicit HTTP 503 responses.
-
-The frontend builds and shows the labeled foundation preview. Part C still needs to connect its screens to the backend. Simulation flows are currently available through the API documentation.
-
-## Local setup (Windows PowerShell)
-
-Requirements: Node/npm, [uv](https://docs.astral.sh/uv/getting-started/installation/), Python 3.12+ (uv can install it), and Docker Desktop for the primary TimescaleDB database.
-
-Run from the actual repository, not its parent folder:
-
-```powershell
-cd "C:\Users\vihaa\OneDrive\Documents\ChatGPT\apollo knight hacks\Apollo"
-npm ci
-npm run setup
-Copy-Item .env.example .env
-npm run db:up
-npm run db:migrate
-npm run dev
-```
-
-Do not overwrite an existing `.env`; update its settings instead. The env template contains synthetic local DB credentials and blank AI keys.
-
-Frontend: [http://127.0.0.1:5173](http://127.0.0.1:5173).
-API documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
-Readiness: [http://127.0.0.1:8000/ready](http://127.0.0.1:8000/ready).
-
-`npm run dev` starts the backend, waits for database readiness, then starts Vite. Occupied ports produce an actionable error. Ctrl+C stops the launcher's service processes. Use `npm run dev:backend` or `npm run dev:frontend` for individual services.
-
-With no `.env` or DATABASE_URL, startup uses persistent SQLite at `backend/data/commandgrid.db`, explicitly identified as `sqlite/local-demo`. This convenience mode is not TigerData acceptance evidence. A configured PostgreSQL failure does not silently switch to SQLite.
-
-The seed mission is inserted on first backend startup without overwriting saved edits.
-
-## Containers
-
-```powershell
-docker compose up -d --build db backend
-```
-
-The frontend image serves the foundation preview:
-
-```powershell
-docker compose up -d --build
-```
-
-Container frontend URL: [http://127.0.0.1:4173](http://127.0.0.1:4173).
-The nginx configuration proxies REST and WebSockets and provides SPA route fallback.
-
-Do not run a host backend and a container backend against the same database simultaneously. Before using `npm run dev`, stop the container backend with `docker compose stop backend`. Named DB volumes preserve data; no volume deletion is part of normal startup/shutdown.
-
-## Checks
-
-```powershell
-npm test
-npm run lint:backend
-npm run lint
-npm run build
-npm run test:backend
-```
-
-- `npm test` / `npm run test:backend`: all backend tests, including Part B numerical tests and real-engine API/storage integration. PostgreSQL-only checks skip without TEST_DATABASE_URL.
-- `npm run build`: frontend typecheck/build.
-- `npm run test:e2e`: Playwright starts isolated backend data and both services; stop existing servers on ports 8000/5173 first. Existing foundation tests need review by Part C for the full-stack UI.
-
-To verify PostgreSQL tests, create a dedicated test database once:
-
-```powershell
-docker compose exec -T db psql -U commandgrid -d commandgrid -c "CREATE DATABASE commandgrid_test"
-$env:TEST_DATABASE_URL = "postgresql+psycopg://commandgrid:commandgrid_local@127.0.0.1:5433/commandgrid_test"
-npm test
-Remove-Item Env:TEST_DATABASE_URL
-```
-
-Only use a disposable database whose name ends in `_test`. Repository/API and real-engine integration tests create and remove their own UUID-named schemas. Focused runner failure/cancellation tests also use a test-only engine; numerical tests and full API lifecycles use the real Part B engine.
-
-## Documentation and agent handoff
-
-- [Part A executable plan](docs/superpowers/plans/2026-10-10-commandgrid-parallel/part-a-backend.md)
-- [Parallel implementation plan](docs/superpowers/plans/2026-10-10-commandgrid-parallel.md)
-- [Shared API contract](docs/api-contract.md)
-- [Architecture](docs/architecture.md)
-- [Demo and validation guide](docs/demo.md)
-- [Part A handoff and verification](docs/part-a-handoff.md)
-
-## Operational boundaries
-
-One backend worker and one active simulation are supported. A data-directory OS lock plus PostgreSQL advisory lock prevent duplicate processes from advancing the same database. A queue-backed worker and shared message bus are future scaling requirements.
-
-API keys remain backend-only. Requests are bounded, CORS/browser WebSocket origins are restricted, AI calls are rate/concurrency/timeout limited, and generated proposals are schema validated before returning. Numerical reports and narratives are stored separately.
-
-This is a single-user local demo. Authentication, authorization and per-user ownership must be implemented before shared public deployment. Gemini/Qwen live inference and paid GPU provisioning are not verified by this milestone.
+The application involved intricate event tracking and state management in order to support the post-run analysis and player feedback features. The accepted command and state update are saved directly before being broadcast to all participants and affect the run outcome. The Idempotent key header guards against duplicates in case of an accidental double submission.
+A full suite of browser tests automates parts of the recovery UI, reporting, configuration, and mission-running process, while other parts are covered by backend unit tests about the simulation logic and persistence. Coding agents handled some of the implementation, and the imagery was generated by the image-assisting AI. CommandGrid is a work-in-progress that demonstrates an end-to-end exercise in infrastructure recovery, with meaningful but limited branching and outcome tracking. The players can focus on the decision-making process and trade-offs that go into infrastructure recovery or operations in general, but this setup is best suited for a learning or entertainment-focused audience. Evaluation on the intended audience is needed before expanding the scope further, including adding more formats of branching scenarios and the ability to host an exercise with multiple people.
