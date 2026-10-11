@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import { useWorkspace } from '../store/workspace'
 import { api } from './api'
+import { backendUrl } from './backend'
 import { cacheState, latestState, terminalQueries } from './queries'
 import { parseFrame } from './state'
 
@@ -55,11 +56,10 @@ export function subscribeRun(client: QueryClient, runId: string) {
         return
       }
       connection(attempt ? 'reconnecting' : 'connecting')
-      const url = new URL(
+      const url = backendUrl(
         `/api/v1/simulations/${encodeURIComponent(runId)}/stream`,
-        location.href,
       )
-      url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
       const current = new WebSocket(url)
       socket = current
       snapshotTimer = setTimeout(() => {

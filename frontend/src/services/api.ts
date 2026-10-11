@@ -1,3 +1,4 @@
+import { backendUrl } from './backend'
 import type {
   AIEnvelope,
   CommandType,
@@ -61,9 +62,11 @@ export async function request<T>(
   }, options.timeout ?? 20000)
   try {
     const response = await fetch(
-      path.startsWith('/health') || path.startsWith('/ready')
-        ? path
-        : `/api/v1${path}`,
+      backendUrl(
+        path.startsWith('/health') || path.startsWith('/ready')
+          ? path
+          : `/api/v1${path}`,
+      ),
       {
         method: options.method ?? 'GET',
         signal: controller.signal,
@@ -192,7 +195,9 @@ export const api = {
   createDemo: () =>
     request<MissionState>('/simulations/demo', { method: 'POST' }),
   recoveryPlan: (runId: string, signal?: AbortSignal) =>
-    request<RecoveryPlan>(`/simulations/${id(runId)}/recovery-plan`, { signal }),
+    request<RecoveryPlan>(`/simulations/${id(runId)}/recovery-plan`, {
+      signal,
+    }),
   command: (
     runId: string,
     body: {
