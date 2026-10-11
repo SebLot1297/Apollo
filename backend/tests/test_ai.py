@@ -503,6 +503,142 @@ async def test_gemini_sdk_contract_and_cleanup():
     assert client.closed
 
 
+async def test_gemini_model_chain_falls_through_on_rate_limit():
+    calls = []
+
+    class Models:
+        async def generate_content(self, **kwargs):
+            calls.append(kwargs["model"])
+            if kwargs["model"] == "first-model":
+                raise httpx.HTTPStatusError(
+                    "rate limited",
+                    request=httpx.Request("POST", "https://example.invalid"),
+                    response=httpx.Response(429),
+                )
+            return SimpleNamespace(
+                text="live answer", candidates=[SimpleNamespace(finish_reason="STOP")], usage_metadata=None
+            )
+
+    adapter = GeminiProvider(
+        AIConfig(gemini_api_key="x", gemini_model="first-model,second-model"),
+        client=SimpleNamespace(aio=SimpleNamespace(models=Models())),
+    )
+    result = await adapter.generate_text("system", "user", 64)
+    assert calls == ["first-model", "second-model"]
+    assert result.model == "second-model"
+    assert result.text == "live answer"
+
+
+async def test_gemini_model_chain_reports_rate_limit_only_when_every_model_fails():
+    class Models:
+        async def generate_content(self, **kwargs):
+            raise httpx.HTTPStatusError(
+                "rate limited",
+                request=httpx.Request("POST", "https://example.invalid"),
+                response=httpx.Response(429),
+            )
+
+    adapter = GeminiProvider(
+        AIConfig(gemini_api_key="x", gemini_model="first-model,second-model"),
+        client=SimpleNamespace(aio=SimpleNamespace(models=Models())),
+    )
+    with pytest.raises(ProviderError) as failure:
+        await adapter.generate_text("system", "user", 64)
+    assert failure.value.code == "upstream_rate_limited"
+    assert failure.value.retryable is True
+
+
+async def test_gemini_chain_stops_early_when_the_key_itself_is_rate_limited():
+    class Models:
+        calls = []
+
+        async def generate_content(self, **kwargs):
+            self.calls.append(kwargs["model"])
+            raise ProviderError("upstream_rate_limited", retryable=True)
+
+    models = Models()
+    adapter = GeminiProvider(
+        AIConfig(gemini_api_key="x", gemini_model="m1,m2,m3,m4,m5"),
+        client=SimpleNamespace(aio=SimpleNamespace(models=models)),
+    )
+    with pytest.raises(ProviderError, match="upstream_rate_limited"):
+        await adapter.generate_text("system", "user", 64)
+    assert models.calls == ["m1", "m2", "m3"]  # a limited key is not walked to the end
+
+
+async def test_gemini_chain_advances_past_a_hanging_model():
+    class Models:
+        async def generate_content(self, **kwargs):
+            if kwargs["model"] == "slow-model":
+                await asyncio.sleep(5)
+            return SimpleNamespace(text="ok", candidates=[], usage_metadata=None)
+
+    adapter = GeminiProvider(
+        AIConfig(gemini_api_key="x", gemini_model="slow-model,fast-model", ai_timeout_seconds=2.0),
+        client=SimpleNamespace(aio=SimpleNamespace(models=Models())),
+    )
+    result = await adapter.generate_text("system", "user", 64)
+    assert result.model == "fast-model"
+
+
+async def test_gemini_chain_advances_when_a_model_ignores_cancellation():
+    class Models:
+        async def generate_content(self, **kwargs):
+            if kwargs["model"] == "stubborn-model":
+                try:
+                    await asyncio.sleep(3)
+                except asyncio.CancelledError:
+                    # A model that swallows cancellation must not stall the chain.
+                    await asyncio.sleep(0.2)
+                    raise
+            return SimpleNamespace(text="ok", candidates=[], usage_metadata=None)
+
+    adapter = GeminiProvider(
+        AIConfig(gemini_api_key="x", gemini_model="stubborn-model,fast-model", ai_timeout_seconds=0.5),
+        client=SimpleNamespace(aio=SimpleNamespace(models=Models())),
+    )
+    result = await adapter.generate_text("system", "user", 64)
+    await asyncio.sleep(0.3)  # let the abandoned call unwind before the loop closes
+    assert result.model == "fast-model"
+
+
+def test_plain_text_reduces_markdown_and_latex_to_prose():
+    from app.services.ai.validation import plain_text
+
+    raw = (
+        "**Operation Signal Restore**\n\n"
+        "This run measures:\n"
+        "* Maintaining communication service (target $\\ge 90\\%$, achieved $\\approx$ 93.71%)\n"
+        "* Restoring two systems\n\n"
+        "### Notes\n"
+        "Use `communication_uptime_percent` for the key, and *only* recorded facts."
+    )
+    result = plain_text(raw)
+    for symbol in ("**", "$", "`", "\\ge", "\\approx", "#", "*"):
+        assert symbol not in result
+    assert "Operation Signal Restore" in result
+    assert "- Maintaining communication service (target >= 90%, achieved ~ 93.71%)" in result
+    assert "- Restoring two systems" in result
+    assert "Notes" in result
+    assert "communication_uptime_percent" in result  # metric keys keep their underscores
+    assert "only recorded facts" in result
+    assert plain_text(result) == result  # normalization is idempotent
+
+
+async def test_service_returns_plain_prose_for_narrative_tasks():
+    provider = FakeProvider("gemini", [ProviderResult("**Status**\n* uptime $\\ge$ 90\\%")])
+    ai = service(provider)
+    envelope = await ai.execute("chat", "How is the run doing?", provider="gemini")
+    assert envelope["data"]["text"] == "Status\n- uptime >= 90%"
+
+
+def test_default_gemini_chain_keeps_gemma_last():
+    chain = [segment.strip() for segment in AIConfig().gemini_model.split(",")]
+    assert chain[0] == "gemini-3.8-flash"
+    assert chain[-1].startswith("gemma-4")
+    assert len(chain) >= 5
+
+
 @pytest.mark.parametrize(
     "text_value,finish,code",
     [

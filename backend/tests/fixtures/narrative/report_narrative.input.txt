@@ -1,0 +1,8 @@
+**After-action summary**
+
+The mission completed after $21600.0$ simulated seconds. Final metrics:
+- communication_uptime_percent: $93.71111111104256$ (target $\ge$ 90.0)
+- supplies_delivered_percent: $70.14845295149253$
+- systems_restored: $3.0$ of $\ge 2$
+
+\textbf{Result}: the evaluator recorded success as $\text{true}$.

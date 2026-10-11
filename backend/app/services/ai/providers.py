@@ -1,14 +1,16 @@
 """Async inference adapters. Neither adapter has access to simulator commands."""
 
+import asyncio
 import ipaddress
 import json
 from dataclasses import dataclass, field
+from time import monotonic
 from typing import Any, Protocol
 from urllib.parse import urlsplit
 
 import httpx
 
-from .config import AIConfig
+from .config import DEFAULT_GEMINI_MODELS, AIConfig
 
 
 class ProviderError(Exception):
@@ -24,6 +26,7 @@ class ProviderError(Exception):
 class ProviderResult:
     text: str
     usage: dict[str, int] = field(default_factory=dict)
+    model: str | None = None
 
 
 class AIProvider(Protocol):
@@ -35,6 +38,19 @@ class AIProvider(Protocol):
     async def generate_text(self, system: str, prompt: str, max_tokens: int) -> ProviderResult: ...
     async def health_check(self) -> bool: ...
     async def aclose(self) -> None: ...
+
+
+def _import_genai() -> tuple[Any, Any]:
+    from google import genai
+    from google.genai import types
+
+    return genai, types
+
+
+def _discard(task: asyncio.Future) -> None:
+    """Retrieve the outcome of an abandoned call so it never surfaces as a warning."""
+    if not task.cancelled():
+        task.exception()
 
 
 def _safe_error(exc: Exception) -> ProviderError:
@@ -75,15 +91,27 @@ class GeminiProvider:
     name = "gemini"
 
     def __init__(self, config: AIConfig, *, client: Any = None):
-        self.model = config.gemini_model
+        # Ordered fallback chain: the first model that answers wins, so one model
+        # running out of quota does not fail the request.
+        chain = [segment.strip() for segment in str(config.gemini_model).split(",")]
+        self.models = [segment for segment in chain if segment] or [DEFAULT_GEMINI_MODELS.split(",")[0]]
+        self.model = self.models[0]
         self.configured = bool(config.gemini_api_key)
         self._config = config
         self._client = client
+        # The SDK import is synchronous, so it is done once at construction (app
+        # startup) rather than inside a request, where it would block the event
+        # loop and silently consume the whole inference budget.
+        self._sdk: tuple[Any, Any] | None = None
+        if client is None and self.configured:
+            try:
+                self._sdk = _import_genai()
+            except Exception:
+                self._sdk = None
 
     def _get_client(self):
         if self._client is None:
-            from google import genai
-            from google.genai import types
+            genai, types = self._sdk or _import_genai()
 
             self._client = genai.Client(
                 api_key=self._config.gemini_api_key,
@@ -95,14 +123,61 @@ class GeminiProvider:
         return self._client
 
     async def _generate(self, system: str, prompt: str, max_tokens: int, schema: dict | None = None) -> ProviderResult:
+        """Walk the model chain so one exhausted, slow or unsupported model cannot fail the request."""
         if not self.configured:
             raise ProviderError("not_configured")
+        # Stay well inside the caller's first attempt window: a chain that is cut
+        # off from outside cannot report why it failed, and would look like a
+        # timeout even when the real cause is an exhausted key.
+        budget = self._config.ai_timeout_seconds * 0.35
+        # No single model may spend more than half the budget (capped at 3s), so a
+        # slow or hanging model cannot use up the turn of the models behind it.
+        model_allowance = max(0.05, min(3.0, budget * 0.5))
+        deadline = monotonic() + budget
+        codes: list[str] = []
+        for model in self.models:
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                codes.append("timeout")
+                break
+            slice_seconds = min(remaining, model_allowance)
+            call = asyncio.ensure_future(
+                self._generate_with_model(model, system, prompt, max_tokens, schema)
+            )
+            done, _ = await asyncio.wait({call}, timeout=slice_seconds)
+            if not done:
+                # Advance without awaiting the cancel: a model that suppresses
+                # cancellation must not be able to stall the rest of the chain.
+                call.cancel()
+                call.add_done_callback(_discard)
+                codes.append("timeout")
+                continue
+            try:
+                return call.result()
+            except ProviderError as exc:
+                codes.append(exc.code)
+                if exc.code == "authentication_failed":
+                    break
+                # A rate limit applies to the key, not just one model, so once a
+                # few models in a row are limited the rest will be too.
+                if len(codes) >= 3 and all(code == "upstream_rate_limited" for code in codes):
+                    break
+        if codes and all(code == "upstream_rate_limited" for code in codes):
+            raise ProviderError("upstream_rate_limited", retryable=True)
+        code = codes[-1] if codes else "provider_request_failed"
+        raise ProviderError(
+            code, retryable=code in {"upstream_rate_limited", "timeout", "upstream_unavailable", "connection_failed"}
+        )
+
+    async def _generate_with_model(
+        self, model: str, system: str, prompt: str, max_tokens: int, schema: dict | None = None
+    ) -> ProviderResult:
         config: dict[str, Any] = {"system_instruction": system, "max_output_tokens": max_tokens, "temperature": 0.3}
         if schema is not None:
             config.update(response_mime_type="application/json", response_json_schema=schema)
         try:
             response = await self._get_client().aio.models.generate_content(
-                model=self.model,
+                model=model,
                 contents=prompt,
                 config=config,
             )
@@ -115,7 +190,11 @@ class GeminiProvider:
                 raise ProviderError("empty_response")
             if len(response.text) > 64000:
                 raise ProviderError("response_too_large")
-            return ProviderResult(response.text, token_usage(getattr(response, "usage_metadata", None), gemini=True))
+            return ProviderResult(
+                response.text,
+                token_usage(getattr(response, "usage_metadata", None), gemini=True),
+                model=model,
+            )
         except ProviderError:
             raise
         except Exception as exc:
@@ -246,7 +325,7 @@ class QwenProvider:
                 raise ProviderError("empty_response")
             if len(text) > 64000:
                 raise ProviderError("response_too_large")
-            return ProviderResult(text, token_usage(data.get("usage", {})))
+            return ProviderResult(text, token_usage(data.get("usage", {})), model=self.model)
         except (KeyError, IndexError, TypeError):
             raise ProviderError("invalid_response") from None
 
