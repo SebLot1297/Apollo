@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   facilitySystem,
@@ -6,46 +5,34 @@ import {
 } from '../../features/control/presentation'
 import type { MissionState } from '../../types/mission'
 import { isTerminal } from '../../types/mission'
-import { simulationClock, number } from '../../utils/format'
+import { elapsed, number } from '../../utils/format'
 
 export default function OperationsSummary({ state }: { state: MissionState }) {
-  const [filter, setFilter] = useState('all')
-  const events = state.events
-    .filter((e) => filter === 'all' || e.severity === filter)
-    .slice(-5)
-    .reverse()
   return (
     <div className="operations-summary" data-testid="operations-summary">
-      <section className="summary-activity">
+      <section className="summary-context">
         <div className="summary-heading">
-          <h2>Activity log</h2>
-          <a className="summary-link" href="#full-event-history">
-            Full event history
-          </a>
-          <select
-            aria-label="Activity filter"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <option value="all">All events</option>
-            <option value="warning">Warnings</option>
-            <option value="critical">Critical</option>
-            <option value="action">Actions</option>
-            <option value="info">Information</option>
-          </select>
+          <h2>Mission context</h2>
         </div>
-        <ol>
-          {events.map((e) => (
-            <li key={e.id}>
-              <time>{simulationClock(e.simulated_time_seconds)}</time>
-              <i className={`event-dot severity-${e.severity}`} />
-              <span title={e.message}>{e.message}</span>
-            </li>
-          ))}
-        </ol>
-        {!events.length && (
-          <p className="cg-help">No matching events recorded.</p>
-        )}
+        <p className="cg-help">
+          {state.mission.description || 'Infrastructure recovery simulation.'}
+        </p>
+        <dl className="cg-facts">
+          <div>
+            <dt>Mission window</dt>
+            <dd>{elapsed(state.mission.duration_seconds)}</dd>
+          </div>
+          <div>
+            <dt>Support teams</dt>
+            <dd>{state.support_teams.length}</dd>
+          </div>
+          <div>
+            <dt>Recovery</dt>
+            <dd>
+              {state.recovery_mode === 'automatic' ? 'Automatic' : 'Manual'}
+            </dd>
+          </div>
+        </dl>
       </section>
       <section className="summary-facilities">
         <div className="summary-heading">

@@ -4,6 +4,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { Incident, IncidentKind, MissionState } from '../../types/mission'
 import { isTerminal } from '../../types/mission'
 import { PanelTitle } from '../ui/Primitives'
+import {
+  capSimulationSpeed,
+  MAX_SIMULATION_SPEED,
+  simulationSpeedHelp,
+} from '../../utils/simulationSpeed'
 
 export default function Commands({
   state,
@@ -48,10 +53,7 @@ export default function Commands({
       : String(state.time_multiplier)
   const multiplier = Number(speed)
   const invalidSpeed =
-    !speed.trim() ||
-    !Number.isFinite(multiplier) ||
-    multiplier <= 0 ||
-    multiplier > 3600
+    !speed.trim() || !Number.isFinite(multiplier) || multiplier <= 0
   return (
     <section className="panel">
       <PanelTitle title="Run tools" meta="Server-confirmed controls" />
@@ -138,13 +140,13 @@ export default function Commands({
             if (blocked || isTerminal(state.status)) return
             if (invalidSpeed) {
               setError(
-                new Error(
-                  'Enter a simulation speed greater than 0 and at most 3600.',
-                ),
+                new Error('Enter a finite simulation speed greater than 0.'),
               )
               return
             }
-            void act('set_speed', { time_multiplier: multiplier })
+            void act('set_speed', {
+              time_multiplier: capSimulationSpeed(multiplier),
+            })
           }}
         >
           <fieldset
@@ -158,8 +160,9 @@ export default function Commands({
                 type="number"
                 aria-label="Run speed (×)"
                 aria-invalid={invalidSpeed}
+                aria-describedby="run-speed-help"
                 min="0"
-                max="3600"
+                max={MAX_SIMULATION_SPEED}
                 step="any"
                 value={speed}
                 onChange={(event) =>
@@ -169,9 +172,9 @@ export default function Commands({
                   })
                 }
               />
-              <small>
+              <small id="run-speed-help">
                 Current speed: {state.time_multiplier}×. Change this run before
-                starting, while running, or while paused.
+                starting, while running, or while paused. {simulationSpeedHelp}
               </small>
             </label>
             <div className="cg-actions" aria-label="Speed presets">

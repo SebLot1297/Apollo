@@ -610,6 +610,51 @@
   gap: 8px;
   line-height: 1.5;
 }
+.report-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 16px;
+  min-height: 52px;
+}
+.report-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.report-disclosure > summary:focus-visible {
+  outline-offset: -4px;
+}
+.report-disclosure > summary h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.report-disclosure > summary h2 > span:first-of-type {
+  flex: 1;
+}
+.report-disclosure > summary .panel-meta {
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.report-disclosure > summary svg {
+  transform: rotate(-90deg);
+}
+.report-disclosure[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+.report-disclosure[open] > summary svg {
+  transform: none;
+}
+@media (max-width: 767px) {
+  .report-disclosure > summary h2 {
+    flex-wrap: wrap;
+    font-size: 16px;
+  }
+  .report-disclosure > summary .panel-meta {
+    margin-left: 28px;
+  }
+}
 .operations-summary {
   display: grid;
   grid-template-columns: minmax(0, 29fr) minmax(0, 40fr) minmax(0, 31fr);
@@ -647,54 +692,18 @@
   font-size: 11px;
   color: var(--muted);
 }
-.summary-heading select {
-  font-size: 11px;
-  border: 1px solid var(--border);
-  background: #f8fbfd;
-  border-radius: 3px;
-  padding: 5px;
-  max-width: 130px;
-}
-.summary-activity ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
 .summary-heading .summary-link {
   margin-top: 0;
 }
-.summary-activity li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 27px;
+.summary-context > p {
   font-size: 12px;
-  border-bottom: 1px solid #e1eaf1;
+  margin: 8px 0;
+  max-height: 60px;
+  overflow: auto;
 }
-.summary-activity time {
-  min-width: 45px;
-  color: var(--muted);
-}
-.summary-activity li > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.event-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #68ac89;
-  flex-shrink: 0;
-}
-.severity-warning {
-  background: #eca31c;
-}
-.severity-critical {
-  background: #c46350;
-}
-.severity-action {
-  background: #3485b0;
+.summary-context .cg-facts {
+  font-size: 12px;
+  gap: 6px;
 }
 .summary-link {
   display: inline-block;

@@ -156,11 +156,16 @@ export async function startAndResolvePower(page: Page) {
     .getByRole('button', { name: 'Acknowledge selected incident' })
     .click()
   await expect(
-    page.getByRole('button', { name: /Power failure · acknowledged/ }),
+    page
+      .getByTestId('incident-inspector')
+      .locator('.inspector-facts')
+      .getByText('acknowledged', { exact: true }),
   ).toBeVisible()
   await page.getByRole('button', { name: 'Restore selected incident' }).click()
   await expect(
-    page.getByRole('button', { name: /Power failure · resolved/ }),
+    page
+      .getByTestId('incident-inspector')
+      .getByRole('heading', { name: 'No active incidents' }),
   ).toBeVisible()
 }
 export async function finish(page: Page) {

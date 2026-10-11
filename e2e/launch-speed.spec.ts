@@ -55,7 +55,7 @@ test('a chosen fractional launch speed persists in this run without changing set
   ).toBe(2.5)
 })
 
-test('invalid launch speeds never submit a simulation and the maximum valid speed launches', async ({
+test('invalid launch speeds never submit a simulation and oversized speeds launch at the maximum', async ({
   page,
   request,
 }) => {
@@ -76,17 +76,17 @@ test('invalid launch speeds never submit a simulation and the maximum valid spee
   page.on('request', (req) => {
     if (req.method() === 'POST' && req.url().endsWith('/simulations')) writes++
   })
-  for (const invalid of ['', '0', '-1', '3601']) {
+  for (const invalid of ['', '0', '-1']) {
     await speed.fill(invalid)
     await card.getByRole('button', { name: 'Launch', exact: true }).click()
     await expect(speed).toHaveAttribute('aria-invalid', 'true')
     await expect(card.getByRole('alert')).toHaveText(
-      'Enter a speed greater than 0 and at most 3600.',
+      'Enter a finite speed greater than 0.',
     )
     expect(writes).toBe(0)
     await expect(page).toHaveURL(new URL('/', page.url()).href)
   }
-  await speed.fill('3600')
+  await speed.fill('10000')
   await expect(speed).toHaveAttribute('aria-invalid', 'false')
   await card.getByRole('button', { name: 'Launch', exact: true }).click()
   await expect(page).toHaveURL(/\/mission-control\/[\da-f-]+$/)

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import type { Event } from '../../types/mission'
-import { Badge, PanelTitle } from '../ui/Primitives'
+import { Badge } from '../ui/Primitives'
+import ReportSection from '../reports/ReportSection'
 import { elapsed } from '../../utils/format'
 export default function Events({ events }: { events: Event[] }) {
   const [limit, setLimit] = useState(50)
   return (
-    <section className="panel">
-      <PanelTitle title="Event timeline" meta={`${events.length} recorded`} />
+    <ReportSection title="Event timeline" meta={`${events.length} recorded`}>
       <ol className="cg-list">
         {events
           .slice(-limit)
@@ -41,6 +41,6 @@ export default function Events({ events }: { events: Event[] }) {
           </button>
         </div>
       )}
-    </section>
+    </ReportSection>
   )
 }

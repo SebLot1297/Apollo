@@ -190,7 +190,9 @@ test('atlas composition follows A and map selection handles edges, overlap, keyb
   await expect(
     inspector.getByRole('heading', { name: 'North Haven Relay', exact: true }),
   ).toBeVisible()
-  await page.getByRole('button', { name: /Power failure · active/ }).click()
+  await page
+    .getByLabel('Active incident', { exact: true })
+    .selectOption(incidentId)
   await expect(page.locator('.map-marker.associated')).toHaveCount(1)
   socket.send(
     JSON.stringify({
@@ -308,7 +310,9 @@ test('map inspector executes a real engine recovery and real screens share the l
   await expect(
     inspector.getByRole('button', { name: 'Execute action', exact: true }),
   ).toBeEnabled()
-  await page.getByRole('button', { name: /Power failure · active/ }).click()
+  await page
+    .getByLabel('Active incident', { exact: true })
+    .selectOption({ label: 'Power failure · active' })
   await inspector
     .getByRole('button', { name: 'Execute action', exact: true })
     .click()
@@ -326,19 +330,11 @@ test('map inspector executes a real engine recovery and real screens share the l
     .getByRole('button', { name: 'Execute action', exact: true })
     .click()
   await expect(
-    page.getByRole('button', { name: /Power failure · resolved/ }),
-  ).toBeVisible()
-  await expect(
     inspector.getByRole('heading', { name: 'No active incidents' }),
   ).toBeVisible()
-  await page.getByRole('button', { name: /Power failure · resolved/ }).click()
-  await expect(
-    inspector.getByRole('heading', { name: 'Power failure', exact: true }),
-  ).toBeVisible()
-  await expect(inspector.getByText(/This incident is resolved/)).toBeVisible()
-  await expect(
-    inspector.getByRole('button', { name: 'Execute action', exact: true }),
-  ).toHaveCount(0)
+  await expect(page.getByLabel('Active incident', { exact: true })).toHaveCount(
+    0,
+  )
   await command(request, run.run_id, 'finish')
   // Scope screenshot data to this real run. Normalize identity/timestamps only;
   // numerical outcomes, objectives, facilities and command evidence stay real.
@@ -398,6 +394,10 @@ test('map inspector executes a real engine recovery and real screens share the l
       await expect(
         page.getByText('Loading server data…', { exact: true }),
       ).toHaveCount(0)
+      if (name === 'reports')
+        await expect(
+          page.getByText('Loading incident history…', { exact: true }),
+        ).toHaveCount(0)
       await page.evaluate(() => document.fonts.ready)
       expect(
         await page.evaluate(

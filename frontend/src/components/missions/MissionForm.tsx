@@ -30,7 +30,6 @@ import { ApiError } from '../../services/api'
 import { useConfirm } from '../ui/confirmation'
 import { ErrorNotice } from '../ui/Feedback'
 import ObjectiveEditor from './ObjectiveEditor'
-import ProposalPanel from '../ai/ProposalPanel'
 
 const parameterLabels = {
   weather_severity: 'Weather severity',
@@ -122,9 +121,10 @@ export default function MissionForm({
       },
     )(event)
   }
-  const apply = (proposal: MissionConfiguration) => {
-    for (const key of Object.keys(toDraft(proposal)) as (keyof MissionDraft)[])
-      form.setValue(key, toDraft(proposal)[key] as never, {
+  const apply = (configuration: MissionConfiguration) => {
+    const values = toDraft(configuration)
+    for (const key of Object.keys(values) as (keyof MissionDraft)[])
+      form.setValue(key, values[key] as never, {
         shouldDirty: true,
         shouldValidate: true,
       })
@@ -441,16 +441,6 @@ export default function MissionForm({
             </button>
           )}
         </div>
-        <section className="panel cg-content">
-          <ProposalPanel
-            mission={draft}
-            registry={registry}
-            savedMission={editing}
-            onApply={apply}
-            objectivesOnly={objectivesOnly}
-            disabled={form.formState.isSubmitting}
-          />
-        </section>
       </div>
       <aside className="builder-context" aria-label="Mission draft context">
         <h2>{objectivesOnly ? 'Objective context' : 'Mission summary'}</h2>

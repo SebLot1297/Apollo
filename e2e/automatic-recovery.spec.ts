@@ -63,11 +63,19 @@ test('automatic recovery runs test2-style objectives unattended and saves real c
   await expect(toggle).toBeDisabled()
   await page.goto(`/reports/${run.run_id}`)
   await expect(page.getByText('Success', { exact: true })).toBeVisible()
+  await page
+    .getByRole('region', { name: 'Accepted command history', exact: true })
+    .locator('summary')
+    .click()
   await expect(
     page.getByText(/Automatic · run equipment diagnostic/),
   ).toBeVisible()
   await expect(page.getByText(/Automatic · restore service/)).toBeVisible()
   await page.reload()
+  await page
+    .getByRole('region', { name: 'Accepted command history', exact: true })
+    .locator('summary')
+    .click()
   await expect(page.getByText(/Automatic · restore service/)).toBeVisible()
   const report = (await (
     await request.get(`/api/v1/reports/${run.run_id}`)
@@ -184,6 +192,10 @@ test('automatic recovery cannot bypass exhausted resources or force a successful
     .toBe('failed')
   await page.goto(`/reports/${run.run_id}`)
   await expect(page.getByText('Unsuccessful', { exact: true })).toBeVisible()
+  await page
+    .getByRole('region', { name: 'Event timeline', exact: true })
+    .locator('summary')
+    .click()
   await expect(
     page
       .getByText(/Automatic recovery blocked: insufficient resources/)

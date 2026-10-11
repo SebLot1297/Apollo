@@ -3,6 +3,8 @@ import { Badge, PageHeading, PanelTitle } from '../components/ui/Primitives'
 import { Empty, ErrorNotice, Loading } from '../components/ui/Feedback'
 import ObjectiveResults from '../components/control/ObjectiveResults'
 import Events from '../components/control/Events'
+import Incidents from '../components/reports/Incidents'
+import ReportSection from '../components/reports/ReportSection'
 import Telemetry from '../components/reports/Telemetry'
 import Comparison from '../components/reports/Comparison'
 import ReportNarrative from '../components/ai/ReportNarrative'
@@ -14,7 +16,7 @@ export default function AfterActionReport() {
     detail = useReport(runId),
     report = detail.data
   return (
-    <div className="page cg-stack">
+    <div className="page cg-stack" key={`report-view-${runId || 'index'}`}>
       <PageHeading
         eyebrow="PERSISTED EVIDENCE"
         title="After-action reports"
@@ -150,9 +152,13 @@ export default function AfterActionReport() {
             </div>
             <ObjectiveResults results={report.objective_results} />
             <Telemetry history={report.telemetry} />
-            <Events events={report.events} />
-            <section className="panel">
-              <PanelTitle title="Accepted command history" />
+            <Incidents runId={report.run_id} />
+            <Events key={`events-${report.run_id}`} events={report.events} />
+            <ReportSection
+              key={`commands-${report.run_id}`}
+              title="Accepted command history"
+              meta={`${report.command_history.length} recorded`}
+            >
               <ul className="cg-list">
                 {report.command_history.map((command, index) => (
                   <li key={index}>
@@ -175,7 +181,7 @@ export default function AfterActionReport() {
               {!report.command_history.length && (
                 <p className="cg-empty">No accepted commands recorded.</p>
               )}
-            </section>
+            </ReportSection>
             <ReportNarrative report={report} />
             {reports.data && reports.data.length > 1 && (
               <Comparison reports={reports.data} />

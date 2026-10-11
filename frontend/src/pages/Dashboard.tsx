@@ -26,6 +26,10 @@ import { parseState } from '../services/state'
 import { useWorkspace } from '../store/workspace'
 import { isTerminal } from '../types/mission'
 import { elapsed, localDate } from '../utils/format'
+import {
+  capSimulationSpeed,
+  simulationSpeedHelp,
+} from '../utils/simulationSpeed'
 
 export default function Dashboard() {
   const client = useQueryClient(),
@@ -68,7 +72,7 @@ export default function Dashboard() {
         await api.createRun(
           missionId,
           randomSeed,
-          speed === undefined ? undefined : Number(speed),
+          speed === undefined ? undefined : capSimulationSpeed(Number(speed)),
         ),
       )
     },
@@ -320,8 +324,7 @@ export default function Dashboard() {
                         }
                       />
                       <small id={`launch-speed-help-${mission.id}`}>
-                        1× is real time. Choose a speed greater than 0 and at
-                        most 3600 for this launch. Settings provide the saved
+                        {simulationSpeedHelp} Settings provide the saved
                         default.
                       </small>
                       {launchSpeeds[mission.id] !== undefined &&
@@ -448,7 +451,7 @@ export default function Dashboard() {
 
 function speedError(value: string) {
   const speed = Number(value)
-  return !value.trim() || !Number.isFinite(speed) || speed <= 0 || speed > 3600
-    ? 'Enter a speed greater than 0 and at most 3600.'
+  return !value.trim() || !Number.isFinite(speed) || speed <= 0
+    ? 'Enter a finite speed greater than 0.'
     : null
 }

@@ -8,7 +8,6 @@ import ScenarioMap from '../components/dashboard/ScenarioMap'
 import Commands from '../components/control/Commands'
 import RecoveryPlan from '../components/control/RecoveryPlan'
 import ObjectiveResults from '../components/control/ObjectiveResults'
-import Events from '../components/control/Events'
 import Telemetry from '../components/reports/Telemetry'
 import Assistant from '../components/ai/Assistant'
 import IncidentInspector from '../components/control/IncidentInspector'
@@ -252,6 +251,10 @@ function LiveWorkspace({
           team={team}
           controller={controller}
           plan={plan}
+          onSelectIncident={(id) => {
+            useWorkspace.getState().selectIncident(id)
+            useWorkspace.getState().selectMarker(state.run_id, null)
+          }}
         />
       </div>
       <OperationsSummary state={state} />
@@ -285,89 +288,42 @@ function LiveWorkspace({
             </span>
           )}
         </div>
-        <div className="cg-grid">
-          <section className="panel">
-            <PanelTitle
-              title="Incidents"
-              meta={`${state.incidents.filter((i) => i.status !== 'resolved').length} unresolved`}
-            />
-            <ul className="cg-list">
-              {state.incidents
-                .slice()
-                .reverse()
-                .map((i) => (
-                  <li key={i.id}>
-                    <button
-                      className="cg-inspect"
-                      aria-pressed={incident?.id === i.id}
-                      onClick={() => {
-                        useWorkspace.getState().selectIncident(i.id)
-                        useWorkspace.getState().selectMarker(state.run_id, null)
-                      }}
-                    >
-                      {i.title} · {i.status} · T+ {number(i.started_at_seconds)}
-                      s
-                    </button>
-                    {incident?.id === i.id && (
-                      <>
-                        <p>{i.description}</p>
-                        <span className="cg-help">
-                          Resolved at:{' '}
-                          {i.resolved_at_seconds === null
-                            ? 'Not resolved'
-                            : `${number(i.resolved_at_seconds)} seconds`}
-                        </span>
-                      </>
-                    )}
-                  </li>
-                ))}
-            </ul>
-            {!state.incidents.length && (
-              <p className="cg-empty">No incidents recorded.</p>
-            )}
-          </section>
-          <section className="panel">
-            <PanelTitle title="Registered metrics" />
-            <ErrorNotice
-              error={registry.error}
-              retry={() => void registry.refetch()}
-            />
-            <dl className="cg-facts cg-content">
-              {Object.entries(state.metrics).map(([key, value]) => (
-                <div key={key}>
-                  <dt>
-                    {registry.data?.metrics[
+        <section className="panel">
+          <PanelTitle title="Registered metrics" />
+          <ErrorNotice
+            error={registry.error}
+            retry={() => void registry.refetch()}
+          />
+          <dl className="cg-facts cg-content">
+            {Object.entries(state.metrics).map(([key, value]) => (
+              <div key={key}>
+                <dt>
+                  {registry.data?.metrics[
+                    key as keyof typeof registry.data.metrics
+                  ]?.name ?? key}
+                </dt>
+                <dd>
+                  {number(
+                    value,
+                    registry.data?.metrics[
                       key as keyof typeof registry.data.metrics
-                    ]?.name ?? key}
-                  </dt>
-                  <dd>
-                    {number(
-                      value,
-                      registry.data?.metrics[
-                        key as keyof typeof registry.data.metrics
-                      ]?.unit,
-                    )}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        </div>
+                    ]?.unit,
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
         <Commands state={state} incident={incident} controller={controller} />
         <RecoveryPlan state={state} controller={controller} plan={plan} />
         <ObjectiveResults results={state.objective_results} />
         <Telemetry history={state.history} />
-        <div className="cg-grid">
-          <div id="full-event-history">
-            <Events events={state.events} />
-          </div>
-          <Assistant
-            key={state.run_id}
-            runId={state.run_id}
-            incident={incident}
-            sequence={state.sequence}
-          />
-        </div>
+        <Assistant
+          key={state.run_id}
+          runId={state.run_id}
+          incident={incident}
+          sequence={state.sequence}
+        />
       </div>
     </div>
   )

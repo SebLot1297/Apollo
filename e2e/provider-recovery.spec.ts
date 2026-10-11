@@ -1,7 +1,14 @@
 import { test, expect } from '@playwright/test'
+import {
+  configuration,
+  createRun,
+  resetWorkspace,
+  saveConfiguration,
+} from './helpers'
 
 test('configured Gemini recovers after a failed probe without manual refresh', async ({
   page,
+  request,
 }) => {
   let probes = 0
   let recovered = false
@@ -21,15 +28,21 @@ test('configured Gemini recovers after a failed probe without manual refresh', a
       ],
     })
   })
-  await page.goto('/mission-builder')
+  await resetWorkspace(request)
+  const mission = await saveConfiguration(
+    request,
+    await configuration(request, 'Provider recovery'),
+  )
+  const run = await createRun(request, mission)
+  await page.goto(`/mission-control/${run.run_id}`)
   await page
     .getByRole('combobox', { name: 'AI provider', exact: true })
     .selectOption('gemini')
   await page
-    .getByLabel('Proposal prompt', { exact: false })
+    .getByLabel('Assistant message', { exact: false })
     .fill('Create a fictional exercise')
   const generate = page.getByRole('button', {
-    name: 'Generate mission proposal',
+    name: 'Ask assistant',
   })
   await expect(generate).toBeDisabled()
   const initialProbes = probes

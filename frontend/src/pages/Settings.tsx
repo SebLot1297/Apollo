@@ -15,10 +15,14 @@ import {
 import { finite } from '../features/missions/validation'
 import type { Preferences, Settings as SettingsData } from '../types/mission'
 import { useDirtyGuard } from '../features/missions/useDirtyGuard'
+import {
+  capSimulationSpeed,
+  simulationSpeedHelp,
+} from '../utils/simulationSpeed'
 const schema = z.object({
   ai_provider: z.enum(['auto', 'gemini', 'qwen', 'mock']),
   demo_mode: z.boolean(),
-  simulation_speed: finite.positive().max(3600),
+  simulation_speed: finite.positive().transform(capSimulationSpeed),
 })
 export default function Settings() {
   const settings = useSettings(),
@@ -151,11 +155,14 @@ function PreferencesForm({ initial }: { initial: SettingsData }) {
         const result = await api.saveSettings(values)
         await client.cancelQueries({ queryKey: keys.settings })
         client.setQueryData(keys.settings, result)
-        form.reset({
-          ai_provider: result.ai_provider,
-          demo_mode: result.demo_mode,
-          simulation_speed: result.simulation_speed,
-        })
+        form.reset(
+          {
+            ai_provider: result.ai_provider,
+            demo_mode: result.demo_mode,
+            simulation_speed: result.simulation_speed,
+          },
+          { keepDirtyValues: false },
+        )
         setSaved(true)
         void client.invalidateQueries({ queryKey: keys.providers })
         void client.invalidateQueries({ queryKey: keys.runs })
@@ -204,12 +211,13 @@ function PreferencesForm({ initial }: { initial: SettingsData }) {
           disabled={form.formState.isSubmitting}
           {...form.register('simulation_speed', { valueAsNumber: true })}
           aria-invalid={Boolean(form.formState.errors.simulation_speed)}
+          aria-describedby="default-speed-help"
         />
-        <small>
+        <small id="default-speed-help">
           Saved for all missions. Updates the current unfinished simulation and
-          provides the default for future launches and resets. Choose a speed
-          greater than 0 and at most 3600. Individual runs can also be adjusted
-          in Mission Control.
+          provides the default for future launches and resets.{' '}
+          {simulationSpeedHelp} Individual runs can also be adjusted in Mission
+          Control.
         </small>
         {form.formState.errors.simulation_speed && (
           <span className="cg-field-error" role="alert">

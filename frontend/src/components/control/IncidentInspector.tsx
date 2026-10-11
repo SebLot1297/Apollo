@@ -33,6 +33,7 @@ interface Props {
   team?: SupportTeam
   controller: RunCommands
   plan: RecoveryQuery
+  onSelectIncident: (id: string | null) => void
 }
 export default function IncidentInspector({
   state,
@@ -41,6 +42,7 @@ export default function IncidentInspector({
   team,
   controller,
   plan,
+  onSelectIncident,
 }: Props) {
   const [choice, setChoice] = useState<{
     incident?: string
@@ -102,6 +104,29 @@ export default function IncidentInspector({
             : state.run_id.slice(0, 8)}
         </small>
       </div>
+      {state.incidents.some((item) => item.status !== 'resolved') && (
+        <label className="cg-field">
+          <span>Active incident</span>
+          <select
+            aria-label="Active incident"
+            value={incident?.status !== 'resolved' ? (incident?.id ?? '') : ''}
+            onChange={(event) => onSelectIncident(event.target.value || null)}
+          >
+            <option value="" disabled>
+              Select an active incident
+            </option>
+            {state.incidents
+              .filter((item) => item.status !== 'resolved')
+              .slice()
+              .reverse()
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.title} · {item.status}
+                </option>
+              ))}
+          </select>
+        </label>
+      )}
       <h2>
         {incident?.title ??
           team?.name ??
@@ -173,8 +198,8 @@ export default function IncidentInspector({
           </p>
         ) : incident?.status === 'resolved' ? (
           <p className="cg-help">
-            This incident is resolved. Its recorded details remain available for
-            review and explanation in the mission assistant.
+            This incident is resolved. Its recorded details remain available in
+            the report.
           </p>
         ) : plan.error ? (
           <p className="cg-help">

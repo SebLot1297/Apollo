@@ -167,11 +167,11 @@ test('invalid control speeds do not send commands and valid fractional speeds wo
   page.on('request', (req) => {
     if (req.method() === 'POST' && req.url().endsWith('/commands')) writes++
   })
-  for (const invalid of ['', '0', '-1', '3601']) {
+  for (const invalid of ['', '0', '-1']) {
     await speed.fill(invalid)
     await apply.click()
     await expect(page.getByRole('alert')).toContainText(
-      'Enter a simulation speed greater than 0 and at most 3600.',
+      'Enter a finite simulation speed greater than 0.',
     )
     await expect(speed).toHaveAttribute('aria-invalid', 'true')
     expect(writes).toBe(0)
@@ -182,6 +182,15 @@ test('invalid control speeds do not send commands and valid fractional speeds wo
     page.getByText('Simulation speed updated to 0.25×.', { exact: true }),
   ).toBeVisible()
   expect(writes).toBe(1)
+  for (const oversized of ['3601', '10000']) {
+    await speed.fill(oversized)
+    await apply.click()
+    await expect(speed).toHaveValue('3600')
+    expect(
+      (await (await request.get(`/api/v1/simulations/${run.run_id}`)).json())
+        .time_multiplier,
+    ).toBe(3600)
+  }
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
