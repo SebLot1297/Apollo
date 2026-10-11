@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-10",
+  "build": "passed",
+  "frontend_lint": "passed",
+  "chromium_tests_passed": 70,
+  "real_mock_ai_tests_passed": 3,
+  "screen_baselines": 13,
+  "layout_widths": [
+    1586,
+    1440,
+    1200,
+    768,
+    390,
+    320
+  ],
+  "no_backend_changes": true,
+  "reference": "output/mockups/a-spatial-atlas.png",
+  "native_capture": "frontend/screenshots/atlas-native.png",
+  "comparisons": [
+    "reference-overlay.png",
+    "reference-comparison.png"
+  ],
+  "note": "Native comparison uses explicitly test-only representative data; production uses saved server coordinates and engine values."
+}

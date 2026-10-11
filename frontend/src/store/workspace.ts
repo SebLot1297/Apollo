@@ -4,6 +4,8 @@ import type { ConnectionStatus } from '../types/mission'
 interface Workspace {
   selectedRunId: string | null
   selectedIncidentId: string | null
+  markerSelections: Record<string, string | null>
+  selectMarker: (runId: string, id: string | null) => void
   connections: Record<string, ConnectionStatus>
   pending: Record<string, boolean>
   selectRun: (id: string) => void
@@ -14,6 +16,11 @@ interface Workspace {
 export const useWorkspace = create<Workspace>((set) => ({
   selectedRunId: null,
   selectedIncidentId: null,
+  markerSelections: {},
+  selectMarker: (runId, id) =>
+    set((current) => ({
+      markerSelections: { ...current.markerSelections, [runId]: id },
+    })),
   connections: {},
   pending: {},
   selectRun: (id) =>

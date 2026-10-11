@@ -1,59 +1,27 @@
-import { useEffect, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import type { RunCommands } from '../../features/control/useRunCommands'
+import type { RecoveryQuery } from '../../features/control/useRecoveryPlan'
 import type { MissionState } from '../../types/mission'
 import { isTerminal } from '../../types/mission'
-import { api } from '../../services/api'
-import {
-  newAction,
-  sendAction,
-  type ActionRequest,
-} from '../../services/commands'
-import { useWorkspace } from '../../store/workspace'
+import { newAction, type ActionRequest } from '../../services/commands'
 import { ErrorNotice, Loading } from '../ui/Feedback'
 import { PanelTitle } from '../ui/Primitives'
 import { number } from '../../utils/format'
 
-const key = (runId: string) => ['recovery-plan', runId] as const
-
-export default function RecoveryPlan({ state }: { state: MissionState }) {
-  const client = useQueryClient()
-  const pending = useWorkspace((store) => store.pending[state.run_id] ?? false)
-  const live = useWorkspace(
-    (store) => store.connections[state.run_id] === 'live',
-  )
-  const [error, setError] = useState<unknown>(null)
-  const [notice, setNotice] = useState('')
-  const terminal = isTerminal(state.status)
-  const automatic = state.recovery_mode === 'automatic'
-  // Refresh after incidents, pause/resume, and confirmed actions; poll while running.
-  const unresolved = state.incidents.filter(
-    (i) => i.status !== 'resolved',
-  ).length
-  const revision = `${state.status}:${unresolved}:${state.recovery_mode ?? 'manual'}`
-  useEffect(() => {
-    void client.invalidateQueries({ queryKey: key(state.run_id) })
-  }, [client, state.run_id, revision])
-  const plan = useQuery({
-    queryKey: key(state.run_id),
-    queryFn: ({ signal }) => api.recoveryPlan(state.run_id, signal),
-    enabled: !terminal && Boolean(state.run_id),
-    refetchInterval: state.status === 'running' ? 5000 : false,
-    staleTime: 0,
-  })
-  const run = async (action: ActionRequest, label: string) => {
-    setError(null)
-    setNotice('')
-    try {
-      const accepted = await sendAction(client, action)
-      setNotice(
-        `${label} confirmed. ${accepted.command_history?.at(-1)?.effect ?? ''}`,
-      )
-      void client.invalidateQueries({ queryKey: key(state.run_id) })
-    } catch (failure) {
-      setError(failure)
-    }
+export default function RecoveryPlan({
+  state,
+  controller,
+  plan,
+}: {
+  state: MissionState
+  controller: RunCommands
+  plan: RecoveryQuery
+}) {
+  const { live, blocked } = controller
+  const terminal = isTerminal(state.status),
+    automatic = state.recovery_mode === 'automatic'
+  const run = async (action: ActionRequest, _label: string) => {
+    await controller.act(action.command_type, { ...action.payload })
   }
-  const blocked = pending || !live
   const steps = plan.data?.steps ?? []
   const outlook = plan.data?.objective_outlook
   return (
@@ -65,15 +33,7 @@ export default function RecoveryPlan({ state }: { state: MissionState }) {
             Guidance is read-only while disconnected; actions stay disabled.
           </p>
         )}
-        <ErrorNotice
-          error={error ?? plan.error}
-          retry={() => void plan.refetch()}
-        />
-        {notice && (
-          <p className="cg-notice success" role="status">
-            {notice}
-          </p>
-        )}
+        <ErrorNotice error={plan.error} retry={() => void plan.refetch()} />
         {terminal ? (
           <p className="cg-help">
             This run has ended. Guidance is available while a run is created,
@@ -85,7 +45,7 @@ export default function RecoveryPlan({ state }: { state: MissionState }) {
           <>
             <p className="cg-help">
               {automatic
-                ? 'Automatic recovery is enabled. The simulation schedules its own repairs using available resources. Switch to Manual in the Command console to execute actions yourself.'
+                ? 'Automatic recovery is enabled. The simulation schedules its own repairs using available resources. Switch to Manual in Run tools to execute actions yourself.'
                 : 'Recommended in priority order. Effects and costs are previewed by the engine on a copied snapshot; nothing is applied until you execute a step.'}
             </p>
             {steps.length ? (

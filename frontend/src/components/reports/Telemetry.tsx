@@ -44,25 +44,25 @@ export default function Telemetry({ history }: { history: HistorySample[] }) {
           >
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={samples} accessibilityLayer>
-                <CartesianGrid stroke="#24313d" strokeDasharray="3 3" />
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="time"
                   type="number"
                   domain={['dataMin', 'dataMax']}
                   tickCount={6}
                   tickFormatter={(value) => number(Number(value))}
-                  tick={{ fill: '#91a0af', fontSize: 11 }}
+                  tick={{ fill: 'var(--muted)', fontSize: 11 }}
                   name="Simulated seconds"
                 />
                 <YAxis
                   domain={[0, 100]}
-                  tick={{ fill: '#91a0af', fontSize: 11 }}
+                  tick={{ fill: 'var(--muted)', fontSize: 11 }}
                   unit="%"
                 />
                 <Tooltip
                   contentStyle={{
-                    background: '#111b25',
-                    borderColor: '#435460',
+                    background: 'var(--panel)',
+                    borderColor: 'var(--border)',
                     fontSize: 12,
                   }}
                   labelFormatter={(label) =>
@@ -73,7 +73,7 @@ export default function Telemetry({ history }: { history: HistorySample[] }) {
                   type="linear"
                   dataKey="uptime"
                   name="Communication uptime"
-                  stroke="#76c8d8"
+                  stroke="var(--cyan)"
                   dot={false}
                   isAnimationActive={false}
                 />
@@ -81,7 +81,7 @@ export default function Telemetry({ history }: { history: HistorySample[] }) {
                   type="linear"
                   dataKey="equipment"
                   name="Equipment availability"
-                  stroke="#87b59d"
+                  stroke="var(--chart-equipment)"
                   dot={false}
                   isAnimationActive={false}
                 />
@@ -89,7 +89,7 @@ export default function Telemetry({ history }: { history: HistorySample[] }) {
                   type="linear"
                   dataKey="resources"
                   name="Resources"
-                  stroke="#dbb576"
+                  stroke="var(--chart-resources)"
                   dot={false}
                   isAnimationActive={false}
                 />
@@ -97,7 +97,7 @@ export default function Telemetry({ history }: { history: HistorySample[] }) {
                   type="linear"
                   dataKey="power"
                   name="Power availability"
-                  stroke="#b3a6dc"
+                  stroke="var(--chart-power)"
                   dot={false}
                   isAnimationActive={false}
                 />
@@ -105,8 +105,8 @@ export default function Telemetry({ history }: { history: HistorySample[] }) {
             </ResponsiveContainer>
           </div>
           <p className="cg-chart-legend">
-            Cyan: historical communication uptime · Green: equipment · Amber:
-            resources · Violet: power. Uptime differs from instantaneous
+            Blue: historical communication uptime · Green: equipment · Amber:
+            resources · Steel blue: power. Uptime differs from instantaneous
             communication health. Latest 600 unique timestamps; the last
             confirmed sample at a duplicate timestamp is plotted.
           </p>

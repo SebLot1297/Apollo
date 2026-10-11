@@ -45,8 +45,8 @@ for (const width of [1440, 390]) {
     for (const [link, title] of [
       ['Dashboard', 'Command dashboard'],
       ['Mission Builder', 'Mission builder'],
-      ['Objective Designer', 'Objective designer'],
-      ['After-Action Reports', 'After-action reports'],
+      ['Objectives', 'Objective designer'],
+      ['Reports', 'After-action reports'],
       ['Settings', 'Workspace settings'],
     ]) {
       if (width === 390)

@@ -5,5 +5,14 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: { proxy: { '/api': { target: 'http://127.0.0.1:8000', ws: true }, '/health': 'http://127.0.0.1:8000', '/ready': 'http://127.0.0.1:8000' } },
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.COMMANDGRID_API_PROXY ?? 'http://127.0.0.1:8000',
+        ws: true,
+      },
+      '/health': process.env.COMMANDGRID_API_PROXY ?? 'http://127.0.0.1:8000',
+      '/ready': process.env.COMMANDGRID_API_PROXY ?? 'http://127.0.0.1:8000',
+    },
+  },
 })

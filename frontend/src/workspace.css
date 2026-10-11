@@ -29,9 +29,9 @@
   padding: 14px 16px;
   border: 1px solid var(--green);
   border-radius: 8px;
-  background: #142b23;
-  color: #dceee5;
-  box-shadow: 0 8px 28px #0006;
+  background: var(--green-soft);
+  color: var(--ink);
+  box-shadow: 0 8px 28px #17345222;
 }
 .cg-toast > svg {
   flex-shrink: 0;
@@ -78,10 +78,11 @@
 .cg-field textarea,
 .cg-field select {
   width: 100%;
+  min-height: 44px;
   min-width: 0;
   border: 1px solid var(--border);
-  background: #0d1721;
-  color: #dce5eb;
+  background: #f8fbfd;
+  color: var(--ink);
   border-radius: 6px;
   padding: 11px 12px;
 }
@@ -98,6 +99,7 @@
 }
 .cg-check {
   display: flex;
+  min-height: 44px;
   align-items: center;
   gap: 9px;
   font-size: 13px;
@@ -116,7 +118,8 @@
   margin: 0;
 }
 .cg-steps button {
-  background: #14202c;
+  min-height: 44px;
+  background: var(--panel);
   color: var(--muted);
   border: 1px solid var(--border);
   padding: 10px 16px;
@@ -135,13 +138,13 @@
 }
 .cg-empty h2 {
   font-size: 18px;
-  color: #dce5eb;
+  color: var(--ink);
 }
 .cg-notice {
   padding: 14px 16px;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--cyan);
-  background: #13232e;
+  border-left: 1px solid var(--cyan);
+  background: var(--blue-soft);
   border-radius: 5px;
   font-size: 13px;
   line-height: 1.65;
@@ -153,23 +156,23 @@
 }
 .cg-notice.error {
   border-left-color: var(--red);
-  background: #281d23;
-  color: #f0b0ab;
+  background: var(--red-soft);
+  color: var(--red);
 }
 .cg-notice.success {
   border-left-color: var(--green);
 }
 .cg-dialog {
   max-width: min(480px, calc(100vw - 32px));
-  border: 1px solid #435460;
+  border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--panel);
-  color: #dce5eb;
+  color: var(--ink);
   padding: 28px;
-  box-shadow: 0 20px 60px #0008;
+  box-shadow: 0 20px 60px #17345233;
 }
 .cg-dialog::backdrop {
-  background: #040a12bb;
+  background: #17345255;
 }
 .cg-dialog h2 {
   font-size: 21px;
@@ -188,7 +191,7 @@
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: 7px;
-  background: #101a24;
+  background: var(--panel);
   display: grid;
   gap: 16px;
 }
@@ -349,13 +352,6 @@
   align-content: start;
   align-self: start;
 }
-.cg-map .marker-critical .marker-symbol {
-  color: var(--red);
-  border-color: var(--red);
-}
-.cg-map .marker-critical .marker-label {
-  color: var(--red);
-}
 .cg-provenance {
   display: flex;
   gap: 8px;
@@ -363,42 +359,11 @@
   font-size: 11px;
   color: var(--muted);
 }
-.cg-map .map-plot {
-  position: absolute;
-  inset: 40px 35px 60px;
-}
-.cg-map button.map-marker {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  color: inherit;
-}
-.cg-map .map-marker.selected .marker-symbol {
-  border-color: var(--cyan);
-  box-shadow: 0 0 0 2px var(--cyan);
-}
-.cg-map .marker-label {
-  max-width: 145px;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-}
-.cg-map .map-legend {
-  flex-wrap: wrap;
-  font-size: 10px;
-  gap: 12px;
-}
-.cg-map-selection {
-  padding: 12px 20px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.7;
-}
 .cg-inspect {
   width: 100%;
   text-align: left;
   border: 1px solid var(--border);
-  background: #14212c;
+  background: var(--panel);
   padding: 14px;
   border-radius: 5px;
 }
@@ -407,6 +372,7 @@
 }
 .cg-section-title {
   font-size: 17px;
+  font-weight: 600;
 }
 .cg-mode-note {
   color: var(--muted);
@@ -448,15 +414,6 @@
   .cg-review dd,
   .cg-facts dd {
     margin-bottom: 8px;
-  }
-  .cg-map .marker-label {
-    display: none;
-  }
-  .cg-map .map-plot {
-    inset: 40px 25px 65px;
-  }
-  .cg-map .map-legend {
-    padding: 12px;
   }
   .cg-steps button {
     padding: 9px 11px;

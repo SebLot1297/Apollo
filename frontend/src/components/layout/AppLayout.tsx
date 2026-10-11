@@ -1,39 +1,27 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  Activity,
-  ChevronRight,
-  FileChartColumn,
-  Grid2X2,
-  Menu,
-  Radio,
-  Settings2,
-  Shield,
-  SlidersHorizontal,
-  Target,
-} from 'lucide-react'
-import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router-dom'
-import { Badge } from '../ui/Primitives'
+import { Menu, Settings2, X } from 'lucide-react'
+import { Link, NavLink, Outlet, useMatch } from 'react-router-dom'
 import NotificationToast from '../ui/NotificationToast'
 import { useRun, useRuns, terminalQueries } from '../../services/queries'
 import { useRunStream } from '../../services/stream'
 import { useWorkspace } from '../../store/workspace'
 import { isTerminal } from '../../types/mission'
-import { elapsed } from '../../utils/format'
+
 const navigation = [
-  { to: '/', label: 'Dashboard', icon: Grid2X2 },
-  { to: '/mission-builder', label: 'Mission Builder', icon: SlidersHorizontal },
-  { to: '/objectives', label: 'Objective Designer', icon: Target },
-  { to: '/mission-control', label: 'Mission Control', icon: Radio },
-  { to: '/reports', label: 'After-Action Reports', icon: FileChartColumn },
-  { to: '/settings', label: 'Settings', icon: Settings2 },
+  { to: '/', label: 'Dashboard' },
+  { to: '/mission-builder', label: 'Mission Builder' },
+  { to: '/objectives', label: 'Objectives' },
+  { to: '/mission-control', label: 'Mission Control' },
+  { to: '/reports', label: 'Reports' },
 ]
 export default function AppLayout() {
-  const [open, setOpen] = useState(false)
-  const location = useLocation()
-  const client = useQueryClient()
-  const runs = useRuns(client)
-  const selected = useWorkspace((state) => state.selectedRunId)
+  const [open, setOpen] = useState(false),
+    menu = useRef<HTMLButtonElement>(null)
+  const drawer = useRef<HTMLDivElement>(null),
+    client = useQueryClient()
+  const runs = useRuns(client),
+    selected = useWorkspace((state) => state.selectedRunId)
   const routeRun = useMatch('/mission-control/:runId')?.params.runId
   const active = runs.data?.find((run) => !isTerminal(run.status))
   const runId = routeRun ?? active?.run_id ?? selected ?? ''
@@ -48,128 +36,128 @@ export default function AppLayout() {
   useEffect(() => {
     if (run.data && isTerminal(run.data.status)) terminalQueries(client, runId)
   }, [client, runId, run.data])
-  const section =
-    navigation.find((n) => n.to !== '/' && location.pathname.startsWith(n.to))
-      ?.label ?? 'Dashboard'
+  useEffect(() => {
+    if (open) drawer.current?.querySelector<HTMLElement>('button, a')?.focus()
+  }, [open])
+  const close = () => {
+    setOpen(false)
+    menu.current?.focus()
+  }
+  const links = navigation.map(({ to, label }) => (
+    <NavLink
+      key={to}
+      to={to}
+      end={to === '/'}
+      onClick={() => setOpen(false)}
+      className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+    >
+      {label}
+    </NavLink>
+  ))
   return (
     <div className="app-shell">
       <NotificationToast />
-      {open && (
-        <button
-          className="nav-scrim"
-          aria-label="Close navigation"
-          onClick={() => setOpen(false)}
-        />
-      )}
-      <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
-        <Link className="brand" to="/" onClick={() => setOpen(false)}>
-          <span className="brand-mark">
-            <Grid2X2 size={23} />
-          </span>
-          <span>
-            COMMAND<span className="brand-light">GRID</span>
-            <small>MISSION OPERATIONS PLATFORM</small>
-          </span>
+      <header className="atlas-header" data-testid="atlas-header">
+        <Link className="brand" to="/">
+          CommandGrid
         </Link>
-        <div className="nav-label">
-          WORKSPACE <span>01</span>
-        </div>
-        <nav aria-label="Main navigation">
-          {navigation.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              onClick={() => setOpen(false)}
-              className={({ isActive }) =>
-                `nav-item ${isActive ? 'active' : ''}`
-              }
+        <nav className="desktop-navigation" aria-label="Main navigation">
+          {links}
+          <div className="header-utilities">
+            <span
+              className={`connection-label ${connection === 'live' ? 'is-live' : ''}`}
             >
-              <Icon size={18} />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-exercise">
-          <div className="eyebrow">
-            <Shield size={13} /> TRAINING ENVIRONMENT
-          </div>
-          <p>
-            Prepare. Respond.
-            <br />
-            <strong>Keep the network alive.</strong>
-          </p>
-          <span className="mono">FICTIONAL OPERATIONS ONLY</span>
-        </div>
-        <div className="sidebar-bottom">
-          <div className="workspace-avatar">CG</div>
-          <div>
-            <strong>Local workspace</strong>
-            <small>Server-connected workspace</small>
-          </div>
-          <span className="live-dot" />
-        </div>
-        <div className="sidebar-version">
-          <span>COMMANDGRID / V0.1</span>
-          <span>OPERATIONS</span>
-        </div>
-      </aside>
-      <div className="main-shell">
-        <header className="topbar">
-          <div className="breadcrumb">
-            <button
-              className="icon-button mobile-menu"
-              aria-label="Open navigation"
-              onClick={() => setOpen(true)}
-            >
-              <Menu size={20} />
-            </button>
-            <span className="muted">Workspace</span>
-            <ChevronRight size={13} />
-            <strong>{section}</strong>
-          </div>
-          <div className="topbar-right">
-            <span className="top-mission">
-              {run.data?.mission.name ?? 'No selected run'}
-            </span>
-            <Badge
-              tone={
-                run.data && ['running', 'completed'].includes(run.data.status)
-                  ? 'green'
-                  : run.data &&
-                      ['failed', 'terminated'].includes(run.data.status)
-                    ? 'red'
-                    : 'neutral'
-              }
-            >
-              {run.data?.status ?? 'Standby'}
-            </Badge>
-            <span className="mode-indicator">
-              <Activity size={13} />{' '}
+              <i />
               {runId
                 ? connection
                 : runs.isError
                   ? 'Backend unavailable'
-                  : 'No active run'}
+                  : 'Standby'}
             </span>
-            <span className="top-clock mono">
-              T+ {run.data ? elapsed(run.data.elapsed_time_seconds) : '—'}
-            </span>
+            <NavLink
+              to="/settings"
+              className="icon-button"
+              aria-label="Settings"
+            >
+              <Settings2 size={18} />
+            </NavLink>
+            <span className="workspace-label">Local workspace</span>
           </div>
-        </header>
-        <main id="main-content">
-          <Outlet />
-        </main>
-        <footer className="global-footer">
-          <span>
-            <span className="live-dot" /> LOCAL WORKSPACE
-          </span>
-          <span>SYNTHETIC DATA · NONCOMBAT EXERCISE</span>
-          <span>
-            COMMANDGRID <strong>0.1.0</strong>
-          </span>
-        </footer>
-      </div>
+        </nav>
+        <button
+          ref={menu}
+          className="icon-button mobile-menu"
+          aria-label="Open navigation"
+          aria-expanded={open}
+          aria-controls="mobile-navigation"
+          onClick={() => setOpen(true)}
+        >
+          <Menu size={22} />
+        </button>
+      </header>
+      {open && (
+        <div className="nav-overlay" onClick={close}>
+          <div
+            id="mobile-navigation"
+            className="mobile-drawer"
+            ref={drawer}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                close()
+              }
+              if (e.key !== 'Tab') return
+              const focusable = Array.from(
+                e.currentTarget.querySelectorAll<HTMLElement>('a, button'),
+              )
+              const first = focusable[0],
+                last = focusable.at(-1)
+              if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault()
+                last?.focus()
+              } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault()
+                first?.focus()
+              }
+            }}
+          >
+            <div className="drawer-heading">
+              <strong>CommandGrid</strong>
+              <button
+                className="icon-button"
+                aria-label="Close navigation"
+                onClick={close}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <nav aria-label="Main navigation">
+              {links}
+              <NavLink
+                className="nav-item"
+                to="/settings"
+                onClick={() => setOpen(false)}
+              >
+                Settings
+              </NavLink>
+            </nav>
+            <p className="cg-help">
+              Local workspace · {runId ? connection : 'Standby'}
+            </p>
+          </div>
+        </div>
+      )}
+      <main id="main-content">
+        <Outlet />
+      </main>
+      <footer className="global-footer">
+        <span>CommandGrid · Local workspace</span>
+        <span>Fictional infrastructure · Noncombat simulation</span>
+      </footer>
     </div>
   )
 }

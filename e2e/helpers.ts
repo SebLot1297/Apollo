@@ -95,7 +95,7 @@ export async function saveMissionFromUI(page: Page) {
   )
   await page.getByRole('button', { name: 'Save mission', exact: true }).click()
   const saved = (await (await response).json()) as MissionConfiguration
-  await expect(page).toHaveURL('http://127.0.0.1:5173/')
+  await expect(page).toHaveURL(new URL('/', page.url()).href)
   await expect(page.locator('.cg-toast')).toHaveText(
     'mission saved successfully',
   )

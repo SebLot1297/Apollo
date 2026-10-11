@@ -299,7 +299,7 @@ test('mission draft controls stay locked during a save and confirmed saves retur
   } finally {
     release()
   }
-  await expect(page).toHaveURL('http://127.0.0.1:5173/')
+  await expect(page).toHaveURL(new URL('/', page.url()).href)
   await expect(page.locator('.cg-toast')).toHaveText(
     'mission saved successfully',
   )
