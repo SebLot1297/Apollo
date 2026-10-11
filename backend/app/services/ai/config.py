@@ -5,13 +5,22 @@ import os
 from dataclasses import dataclass, fields
 from typing import Any
 
+# Ordered, comma-separated Gemini fallback chain. The first model that answers wins,
+# so one model's exhausted quota cannot fail the request. The order is by measured
+# latency for a representative prompt (fastest responders first, hanging last), so a
+# usable answer arrives before the request deadline instead of after it.
+DEFAULT_GEMINI_MODELS = (
+    "gemini-3.8-flash,gemini-3.1-flash-lite,gemini-3.5-flash-lite,gemini-3.7-flash,"
+    "gemini-3.5-flash,gemini-3.6-flash,gemini-3-flash-preview,gemini-2.5-flash,gemma-4-26b-a4b-it"
+)
+
 
 @dataclass(frozen=True, repr=False)
 class AIConfig:
     enable_ai: bool = True
     enable_qwen: bool = False
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-3.8-flash"
+    gemini_model: str = DEFAULT_GEMINI_MODELS
     qwen_base_url: str = ""
     qwen_api_key: str = ""
     qwen_model: str = "Qwen/Qwen3.8-27B"
@@ -32,8 +41,13 @@ class AIConfig:
                 raise ValueError(f"{name} must be a string")
         for name in ("gemini_model", "qwen_model"):
             value = getattr(self, name)
-            if not isinstance(value, str) or not value.strip() or len(value) > 160:
-                raise ValueError(f"{name} must be a nonblank string of at most 160 characters")
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} must be a nonblank string")
+        if len(self.qwen_model) > 160:
+            raise ValueError("qwen_model must be at most 160 characters")
+        chain = [segment.strip() for segment in self.gemini_model.split(",")]
+        if len(chain) > 12 or any(not segment or len(segment) > 160 for segment in chain):
+            raise ValueError("gemini_model must list at most 12 comma-separated models of at most 160 characters")
         for name in ("ai_max_output_tokens", "ai_max_concurrency", "ai_requests_per_minute"):
             if type(getattr(self, name)) is not int:
                 raise ValueError(f"{name} must be an integer")

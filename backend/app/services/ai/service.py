@@ -144,7 +144,7 @@ class AIService:
                                 call = adapter.generate_text(system, user, self.config.ai_max_output_tokens)
                             result = await asyncio.wait_for(call, timeout=timeout)
                             data = self._validate_result(task, result, context)
-                            return self._envelope(name, adapter.model, data, result.usage, reasons, started)
+                            return self._envelope(name, result.model or adapter.model, data, result.usage, reasons, started)
                         except TimeoutError:
                             error = ProviderError("timeout", retryable=True)
                         except ProviderError as exc:
